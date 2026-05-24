@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.Python
+*.so
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# PyInstaller (per la futura build .exe) — solo nella root
+/build/
+/dist/
+*.spec
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
+
+# Screenshot di test della GUI (artefatti di sviluppo)
+gui_*screenshot*.png
+gui_*.png
+
+# Stato locale dell'utente (override magazzini/nazioni/prezzi per partita corrente)
+user_state.json
+
+# Output delle rotte: derivati o specifici dell'utente
+rotte/input/
+rotte/parsed/
+rotte/built/
+
+# Non escludere i fixture di test e gli esempi
+!rotte/test/
+!rotte/build/example-route.json

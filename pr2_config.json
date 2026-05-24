@@ -1,0 +1,1185 @@
+{
+  "_meta": {
+    "format": "pr2-config-v1",
+    "game": "Port Royale 2 - Impero & Pirati",
+    "notes": [
+      "Riferimento condiviso per merci e porti del gioco.",
+      "I 'price_*' sono valori indicativi in oro/tonnellata, DA RIFINIRE con test in-game o pagine wiki.",
+      "Gli 'id' delle citta sono attualmente null: vanno popolati creando in-game una rotta con un solo stop sulla citta nota e leggendo il 'city_id' nel trailer del file .ahr (vedi: python ahr.py cities <file>).",
+      "Il campo 'confirmed' indica se il mapping id<->nome e' verificato (true) o dedotto (false, in attesa di conferma).",
+      "Il campo 'nation' e SOLO informativo (nazione iniziale al new game). Le citta cambiano nazione durante la partita: NON usarlo come chiave stabile, solo come hint."
+    ]
+  },
+  "goods": [
+    {
+      "id": 0,
+      "key": "grano",
+      "name_it": "Grano",
+      "name_en": "Wheat",
+      "price_min": 64,
+      "price_market": 80,
+      "price_max": 208,
+      "price_buy_advised": 96,
+      "price_sell_advised": 150
+    },
+    {
+      "id": 1,
+      "key": "frutta",
+      "name_it": "Frutta",
+      "name_en": "Fruit",
+      "price_min": 64,
+      "price_market": 80,
+      "price_max": 208,
+      "price_buy_advised": 96,
+      "price_sell_advised": 150
+    },
+    {
+      "id": 2,
+      "key": "legno",
+      "name_it": "Legno",
+      "name_en": "Wood",
+      "price_min": 64,
+      "price_market": 80,
+      "price_max": 208,
+      "price_buy_advised": 96,
+      "price_sell_advised": 150
+    },
+    {
+      "id": 3,
+      "key": "mattoni",
+      "name_it": "Mattoni",
+      "name_en": "Bricks",
+      "price_min": 64,
+      "price_market": 80,
+      "price_max": 208,
+      "price_buy_advised": 96,
+      "price_sell_advised": 150
+    },
+    {
+      "id": 4,
+      "key": "mais",
+      "name_it": "Mais",
+      "name_en": "Corn",
+      "price_min": 80,
+      "price_market": 100,
+      "price_max": 260,
+      "price_buy_advised": 120,
+      "price_sell_advised": 170
+    },
+    {
+      "id": 5,
+      "key": "zucchero",
+      "name_it": "Zucchero",
+      "name_en": "Sugar",
+      "price_min": 80,
+      "price_market": 100,
+      "price_max": 260,
+      "price_buy_advised": 120,
+      "price_sell_advised": 170
+    },
+    {
+      "id": 6,
+      "key": "cotone",
+      "name_it": "Cotone",
+      "name_en": "Cotton",
+      "price_min": 80,
+      "price_market": 100,
+      "price_max": 260,
+      "price_buy_advised": 120,
+      "price_sell_advised": 170
+    },
+    {
+      "id": 7,
+      "key": "canapa",
+      "name_it": "Canapa",
+      "name_en": "Hemp",
+      "price_min": 80,
+      "price_market": 100,
+      "price_max": 260,
+      "price_buy_advised": 120,
+      "price_sell_advised": 170
+    },
+    {
+      "id": 8,
+      "key": "carne",
+      "name_it": "Carne",
+      "name_en": "Meat",
+      "price_min": 240,
+      "price_market": 300,
+      "price_max": 780,
+      "price_buy_advised": 360,
+      "price_sell_advised": 500
+    },
+    {
+      "id": 9,
+      "key": "vestiti",
+      "name_it": "Vestiti",
+      "name_en": "Garments",
+      "price_min": 240,
+      "price_market": 300,
+      "price_max": 780,
+      "price_buy_advised": 360,
+      "price_sell_advised": 500
+    },
+    {
+      "id": 10,
+      "key": "corda",
+      "name_it": "Corda",
+      "name_en": "Rope",
+      "price_min": 240,
+      "price_market": 300,
+      "price_max": 780,
+      "price_buy_advised": 360,
+      "price_sell_advised": 500
+    },
+    {
+      "id": 11,
+      "key": "rum",
+      "name_it": "Rum",
+      "name_en": "Rum",
+      "price_min": 240,
+      "price_market": 300,
+      "price_max": 780,
+      "price_buy_advised": 360,
+      "price_sell_advised": 500
+    },
+    {
+      "id": 12,
+      "key": "caffe",
+      "name_it": "Caffè",
+      "name_en": "Coffee",
+      "price_min": 120,
+      "price_market": 150,
+      "price_max": 390,
+      "price_buy_advised": 180,
+      "price_sell_advised": 220
+    },
+    {
+      "id": 13,
+      "key": "cacao",
+      "name_it": "Cacao",
+      "name_en": "Cocoa",
+      "price_min": 120,
+      "price_market": 150,
+      "price_max": 390,
+      "price_buy_advised": 180,
+      "price_sell_advised": 220
+    },
+    {
+      "id": 14,
+      "key": "tinture",
+      "name_it": "Tinture",
+      "name_en": "Dyes",
+      "price_min": 120,
+      "price_market": 150,
+      "price_max": 390,
+      "price_buy_advised": 180,
+      "price_sell_advised": 220
+    },
+    {
+      "id": 15,
+      "key": "tabacco",
+      "name_it": "Tabacco",
+      "name_en": "Tobacco",
+      "price_min": 120,
+      "price_market": 150,
+      "price_max": 390,
+      "price_buy_advised": 180,
+      "price_sell_advised": 220
+    },
+    {
+      "id": 16,
+      "key": "spezie",
+      "name_it": "Spezie",
+      "name_en": "Spices",
+      "price_min": 500,
+      "price_market": 500,
+      "price_max": 1300,
+      "price_buy_advised": 700,
+      "price_sell_advised": 900
+    },
+    {
+      "id": 17,
+      "key": "vino",
+      "name_it": "Vino",
+      "name_en": "Wine",
+      "price_min": 500,
+      "price_market": 500,
+      "price_max": 1300,
+      "price_buy_advised": 700,
+      "price_sell_advised": 900
+    },
+    {
+      "id": 18,
+      "key": "attrezzi",
+      "name_it": "Attrezzi",
+      "name_en": "Tools",
+      "price_min": 500,
+      "price_market": 500,
+      "price_max": 1300,
+      "price_buy_advised": 700,
+      "price_sell_advised": 900
+    },
+    {
+      "id": 19,
+      "key": "coloni",
+      "name_it": "Coloni",
+      "name_en": "Settlers",
+      "price_min": 0,
+      "price_market": 0,
+      "price_max": 0,
+      "price_buy_advised": 0,
+      "price_sell_advised": 0
+    }
+  ],
+  "cities": [
+    {
+      "id": 0,
+      "key": "corpus_christi",
+      "name": "Corpus Christi",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        2,
+        4,
+        6,
+        14
+      ]
+    },
+    {
+      "id": 1,
+      "key": "new_orleans",
+      "name": "New Orleans",
+      "nation": "francia",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        1,
+        4,
+        6,
+        14
+      ]
+    },
+    {
+      "id": 2,
+      "key": "biloxi",
+      "name": "Biloxi",
+      "nation": "francia",
+      "role": "V",
+      "confirmed": true,
+      "produces": [
+        1,
+        2,
+        3,
+        8,
+        11,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "id": 3,
+      "key": "pensacola",
+      "name": "Pensacola",
+      "nation": "francia",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        2,
+        4,
+        6,
+        14
+      ]
+    },
+    {
+      "id": 4,
+      "key": "port_st_joe",
+      "name": "Port St. Joe",
+      "nation": "francia",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        1,
+        4,
+        6,
+        14
+      ]
+    },
+    {
+      "id": 5,
+      "key": "tampa",
+      "name": "Tampa",
+      "nation": "francia",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        2,
+        4,
+        6,
+        12
+      ]
+    },
+    {
+      "id": 6,
+      "key": "florida_keys",
+      "name": "Florida Keys",
+      "nation": "francia",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        2,
+        4,
+        6,
+        14
+      ]
+    },
+    {
+      "id": 7,
+      "key": "tampico",
+      "name": "Tampico",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        3,
+        5,
+        7,
+        12
+      ]
+    },
+    {
+      "id": 8,
+      "key": "veracruz",
+      "name": "Veracruz",
+      "nation": "spagna",
+      "role": "G",
+      "confirmed": true,
+      "produces": [
+        0,
+        1,
+        3,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "id": 9,
+      "key": "villa_hermosa",
+      "name": "Villa Hermosa",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        3,
+        5,
+        7,
+        12
+      ]
+    },
+    {
+      "id": 10,
+      "key": "campeche",
+      "name": "Campeche",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        2,
+        5,
+        7,
+        12
+      ]
+    },
+    {
+      "id": 11,
+      "key": "sisal",
+      "name": "Sisal",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        2,
+        5,
+        7,
+        12
+      ]
+    },
+    {
+      "id": 12,
+      "key": "cancun",
+      "name": "Cancun",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        3,
+        5,
+        7,
+        12
+      ]
+    },
+    {
+      "id": 13,
+      "key": "belize",
+      "name": "Belize",
+      "nation": "spagna",
+      "role": "G",
+      "confirmed": true,
+      "produces": [
+        0,
+        2,
+        3,
+        10,
+        11,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "id": 14,
+      "key": "roatan",
+      "name": "Roatan",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        3,
+        5,
+        7,
+        14
+      ]
+    },
+    {
+      "id": 15,
+      "key": "charlestown",
+      "name": "Charlestown",
+      "nation": "francia",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        2,
+        4,
+        5,
+        14
+      ]
+    },
+    {
+      "id": 16,
+      "key": "fort_caroline",
+      "name": "Fort Caroline",
+      "nation": "francia",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        3,
+        4,
+        5,
+        15
+      ]
+    },
+    {
+      "id": 17,
+      "key": "st_augustine",
+      "name": "St. Augustine",
+      "nation": "francia",
+      "role": "G",
+      "confirmed": true,
+      "produces": [
+        1,
+        2,
+        3,
+        8,
+        10,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "id": 18,
+      "key": "gran_bahama",
+      "name": "Gran Bahama",
+      "nation": "olanda",
+      "role": "V",
+      "confirmed": true,
+      "produces": [
+        0,
+        1,
+        2,
+        9,
+        10,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "id": 19,
+      "key": "eleuthera",
+      "name": "Eleuthera",
+      "nation": "olanda",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        3,
+        4,
+        5,
+        14
+      ]
+    },
+    {
+      "id": 20,
+      "key": "nassau",
+      "name": "Nassau",
+      "nation": "olanda",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        2,
+        4,
+        5,
+        14
+      ]
+    },
+    {
+      "id": 21,
+      "key": "cat_island",
+      "name": "Cat Island",
+      "nation": "olanda",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        2,
+        4,
+        5,
+        14
+      ]
+    },
+    {
+      "id": 22,
+      "key": "charles_town",
+      "name": "Charles Town",
+      "nation": "olanda",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        3,
+        4,
+        5,
+        14
+      ]
+    },
+    {
+      "id": 23,
+      "key": "nombre_de_dios",
+      "name": "Nombre de Dios",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        3,
+        6,
+        7,
+        15
+      ]
+    },
+    {
+      "id": 24,
+      "key": "evangelista",
+      "name": "Evangelista",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        2,
+        6,
+        7,
+        15
+      ]
+    },
+    {
+      "id": 25,
+      "key": "havana",
+      "name": "L'Avana",
+      "nation": "spagna",
+      "role": "G",
+      "confirmed": true,
+      "produces": [
+        0,
+        2,
+        3,
+        9,
+        11,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "id": 26,
+      "key": "trinidad",
+      "name": "Trinidad",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        3,
+        6,
+        7,
+        15
+      ]
+    },
+    {
+      "id": 27,
+      "key": "andros",
+      "name": "Andros",
+      "nation": "olanda",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        2,
+        6,
+        7,
+        14
+      ]
+    },
+    {
+      "id": 28,
+      "key": "gibara",
+      "name": "Gibara",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        2,
+        6,
+        7,
+        15
+      ]
+    },
+    {
+      "id": 29,
+      "key": "santiago",
+      "name": "Santiago",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        3,
+        6,
+        7,
+        15
+      ]
+    },
+    {
+      "id": 30,
+      "key": "tortuga",
+      "name": "Tortuga",
+      "nation": "inghilterra",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        3,
+        5,
+        6,
+        15
+      ]
+    },
+    {
+      "id": 31,
+      "key": "port_au_prince",
+      "name": "Port-au-Prince",
+      "nation": "inghilterra",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        3,
+        5,
+        6,
+        15
+      ]
+    },
+    {
+      "id": 32,
+      "key": "turk_islands",
+      "name": "Turk Islands",
+      "nation": "olanda",
+      "role": "G",
+      "confirmed": true,
+      "produces": [
+        0,
+        1,
+        2,
+        10,
+        11,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "id": 33,
+      "key": "isabella",
+      "name": "Isabella",
+      "nation": "inghilterra",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        2,
+        3,
+        5,
+        6,
+        15
+      ]
+    },
+    {
+      "id": 34,
+      "key": "santo_domingo",
+      "name": "Santo Domingo",
+      "nation": "inghilterra",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        1,
+        5,
+        6,
+        15
+      ]
+    },
+    {
+      "id": 35,
+      "key": "san_juan",
+      "name": "San Juan",
+      "nation": "inghilterra",
+      "role": "G",
+      "confirmed": true,
+      "produces": [
+        1,
+        2,
+        3,
+        8,
+        11,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "id": 36,
+      "key": "st_thome",
+      "name": "St. Thome",
+      "nation": "inghilterra",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        2,
+        5,
+        6,
+        15
+      ]
+    },
+    {
+      "id": 37,
+      "key": "st_martin",
+      "name": "St. Martin",
+      "nation": "inghilterra",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        2,
+        3,
+        5,
+        6,
+        15
+      ]
+    },
+    {
+      "id": 38,
+      "key": "st_kitts",
+      "name": "St. Kitts",
+      "nation": "inghilterra",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        3,
+        4,
+        7,
+        13
+      ]
+    },
+    {
+      "id": 39,
+      "key": "antigua",
+      "name": "Antigua",
+      "nation": "inghilterra",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        2,
+        3,
+        4,
+        7,
+        13
+      ]
+    },
+    {
+      "id": 40,
+      "key": "guadalupe",
+      "name": "Guadalupe",
+      "nation": "inghilterra",
+      "role": "V",
+      "confirmed": true,
+      "produces": [
+        0,
+        1,
+        3,
+        8,
+        9,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "id": 41,
+      "key": "grenada",
+      "name": "Grenada",
+      "nation": "inghilterra",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        2,
+        3,
+        4,
+        7,
+        13
+      ]
+    },
+    {
+      "id": 42,
+      "key": "st_lucia",
+      "name": "St. Lucia",
+      "nation": "inghilterra",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        2,
+        4,
+        7,
+        13
+      ]
+    },
+    {
+      "id": 43,
+      "key": "martinica",
+      "name": "Martinica",
+      "nation": "inghilterra",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        1,
+        4,
+        7,
+        13
+      ]
+    },
+    {
+      "id": 44,
+      "key": "barbados",
+      "name": "Barbados",
+      "nation": "inghilterra",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        1,
+        4,
+        7,
+        13
+      ]
+    },
+    {
+      "id": 45,
+      "key": "providence",
+      "name": "Providence",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        3,
+        5,
+        6,
+        13
+      ]
+    },
+    {
+      "id": 46,
+      "key": "cayman",
+      "name": "Cayman",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        2,
+        5,
+        6,
+        13
+      ]
+    },
+    {
+      "id": 47,
+      "key": "port_royale",
+      "name": "Port Royale",
+      "nation": "spagna",
+      "role": "V",
+      "confirmed": true,
+      "produces": [
+        0,
+        2,
+        3,
+        8,
+        10,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "id": 48,
+      "key": "cartagena",
+      "name": "Cartagena",
+      "nation": "spagna",
+      "role": "G",
+      "confirmed": true,
+      "produces": [
+        0,
+        1,
+        2,
+        9,
+        11,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "id": 49,
+      "key": "santa_maria",
+      "name": "Santa Maria",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        2,
+        3,
+        5,
+        6,
+        13
+      ]
+    },
+    {
+      "id": 50,
+      "key": "maracaibo",
+      "name": "Maracaibo",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        3,
+        5,
+        6,
+        12
+      ]
+    },
+    {
+      "id": 51,
+      "key": "gibraltar",
+      "name": "Gibraltar",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        1,
+        5,
+        6,
+        12
+      ]
+    },
+    {
+      "id": 52,
+      "key": "coro",
+      "name": "Coro",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        2,
+        5,
+        6,
+        12
+      ]
+    },
+    {
+      "id": 53,
+      "key": "curacao",
+      "name": "Curacao",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        1,
+        3,
+        4,
+        7,
+        12
+      ]
+    },
+    {
+      "id": 54,
+      "key": "puerto_cabello",
+      "name": "Puerto Cabello",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        2,
+        3,
+        4,
+        7,
+        12
+      ]
+    },
+    {
+      "id": 55,
+      "key": "caracas",
+      "name": "Caracas",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        3,
+        4,
+        7,
+        12
+      ]
+    },
+    {
+      "id": 56,
+      "key": "margarita",
+      "name": "Margarita",
+      "nation": "spagna",
+      "role": "G",
+      "confirmed": true,
+      "produces": [
+        0,
+        1,
+        3,
+        9,
+        10,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "id": 57,
+      "key": "puerto_santo",
+      "name": "Puerto Santo",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        1,
+        4,
+        7,
+        13
+      ]
+    },
+    {
+      "id": 58,
+      "key": "port_of_spain",
+      "name": "Port of Spain",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        2,
+        3,
+        4,
+        7,
+        13
+      ]
+    },
+    {
+      "id": 59,
+      "key": "georgetown",
+      "name": "Georgetown",
+      "nation": "spagna",
+      "role": null,
+      "confirmed": true,
+      "produces": [
+        0,
+        2,
+        4,
+        7,
+        13
+      ]
+    }
+  ]
+}

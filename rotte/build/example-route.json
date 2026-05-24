@@ -1,0 +1,36 @@
+{
+  "_format": "pr2-route-v1",
+  "_note": "Specifica user-friendly per costruire una rotta .ahr. I nomi merci/citta sono le 'key' di pr2_config.json.",
+
+  "excluded_route": ["carne", "vestiti"],
+
+  "stops": [
+    {
+      "city": "port_royale",
+      "excluded_here": [],
+      "manual": {
+        "rum": {
+          "load":   { "mode": "city", "qty": 100, "price": 250 },
+          "unload": { "mode": "city", "qty":  50, "price": 350 }
+        },
+        "tinture": {
+          "load":   { "mode": "warehouse", "qty": "max" },
+          "unload": { "mode": "warehouse", "qty": "max" }
+        }
+      }
+    },
+    {
+      "city": "havana",
+      "excluded_here": ["vino"],
+      "manual": {
+        "zucchero": {
+          "load":   { "mode": "city", "qty": "max", "price": 260 }
+        }
+      }
+    },
+    {
+      "city": "georgetown",
+      "manual": {}
+    }
+  ]
+}

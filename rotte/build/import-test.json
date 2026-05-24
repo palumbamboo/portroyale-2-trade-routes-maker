@@ -1,0 +1,33 @@
+{
+  "_format": "pr2-route-v1",
+  "_note": "Test di validazione: il gioco deve accettare e mostrare correttamente questa rotta generata da zero dal builder.",
+
+  "excluded_route": ["carne", "vestiti"],
+
+  "stops": [
+    {
+      "city": "port_royale",
+      "excluded_here": [],
+      "manual": {
+        "rum": {
+          "load":   { "mode": "city", "qty": 100, "price": 250 },
+          "unload": { "mode": "city", "qty": 50,  "price": 350 }
+        }
+      }
+    },
+    {
+      "city": "turk_islands",
+      "excluded_here": [],
+      "manual": {
+        "tabacco": {
+          "load":   { "mode": "city",      "qty": "max", "price": 200 },
+          "unload": { "mode": "warehouse", "qty": "max" }
+        }
+      }
+    },
+    {
+      "city": "havana",
+      "manual": {}
+    }
+  ]
+}
