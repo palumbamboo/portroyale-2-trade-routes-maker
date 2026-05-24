@@ -36,6 +36,9 @@ gui_*.png
 # Stato locale dell'utente (override magazzini/nazioni/prezzi per partita corrente)
 user_state.json
 
+# Briefing per le prossime sessioni Claude (file locale)
+NEXT_SESSION.md
+
 # Output delle rotte: derivati o specifici dell'utente
 rotte/input/
 rotte/parsed/
