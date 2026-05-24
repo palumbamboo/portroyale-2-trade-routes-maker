@@ -3,103 +3,138 @@ from __future__ import annotations
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from ..constants import (
-    PRICE_SLIDER_MAX,
-    QTY_MAX,
-    QTY_SLIDER_MAX,
-)
+from ..constants import QTY_MAX
+
+
+class _QtyEditSpinBox(QtWidgets.QSpinBox):
+    """QSpinBox che mostra 'MAX' quando il valore vale QTY_MAX (sentinella 0xFFFF)."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setRange(0, QTY_MAX)
+
+    def textFromValue(self, value: int) -> str:
+        if value == QTY_MAX:
+            return "MAX"
+        return str(value)
+
+    def valueFromText(self, text: str) -> int:
+        if text.strip().upper() == "MAX":
+            return QTY_MAX
+        try:
+            return int(text)
+        except ValueError:
+            return 0
+
+    def validate(self, text: str, pos: int):
+        s = text.strip().upper()
+        if s in ("", "M", "MA", "MAX"):
+            return (QtGui.QValidator.Acceptable, text, pos)
+        try:
+            n = int(text)
+            if 0 <= n <= QTY_MAX:
+                return (QtGui.QValidator.Acceptable, text, pos)
+        except ValueError:
+            pass
+        return (QtGui.QValidator.Invalid, text, pos)
 
 
 class QtySlider(QtWidgets.QWidget):
-    """Slider 0..QTY_SLIDER_MAX + label numerica + checkbox MAX (per la sentinella 0xFFFF).
+    """Slider 0..2001 (al fondo = MAX) + spinbox editabile.
 
-    Per quantità nel range 0..QTY_SLIDER_MAX usa lo slider; per il valore
-    speciale QTY_MAX (max nave/magazzino) usa il checkbox MAX, che mette lo
-    slider in stato disabilitato.
+    - Posizione 0..2000 → valore esatto.
+    - Posizione 2001 → sentinella MAX (QTY_MAX = 0xFFFF, "max nave/magazzino").
+    - Lo spinbox accetta valori arbitrari 0..QTY_MAX, mostra "MAX" alla sentinella;
+      è sempre la fonte di verità (lo slider si attesta al limite più vicino se
+      il valore è > 2000 ma < QTY_MAX, caso anomalo).
     """
 
-    valueChanged = QtCore.Signal(int)  # emette il valore corrente (intero in 0..QTY_MAX)
+    valueChanged = QtCore.Signal(int)
+
+    PRECISE_MAX = 2000      # ultimo valore lineare
+    MAX_POSITION = 2001     # posizione speciale = QTY_MAX
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._suppress = False
-        self._value = 0
 
         h = QtWidgets.QHBoxLayout(self)
         h.setContentsMargins(0, 0, 0, 0)
-        h.setSpacing(4)
+        h.setSpacing(6)
 
         self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        self.slider.setRange(0, QTY_SLIDER_MAX)
+        self.slider.setRange(0, self.MAX_POSITION)
         self.slider.setSingleStep(50)
         self.slider.setPageStep(200)
+        self.slider.setMinimumWidth(140)
+        self.slider.setToolTip("Slider 0–2000 t; fine corsa = MAX")
         self.slider.valueChanged.connect(self._on_slider_changed)
         h.addWidget(self.slider, 1)
 
-        self.lbl = QtWidgets.QLabel("0")
-        self.lbl.setMinimumWidth(36)
-        self.lbl.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        h.addWidget(self.lbl)
-
-        self.cb_max = QtWidgets.QCheckBox("MAX")
-        self.cb_max.toggled.connect(self._on_max_toggled)
-        h.addWidget(self.cb_max)
+        self.spin = _QtyEditSpinBox()
+        self.spin.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+        self.spin.setAlignment(QtCore.Qt.AlignRight)
+        self.spin.setMinimumWidth(58)
+        self.spin.setMaximumWidth(68)
+        self.spin.setToolTip("Inserisci valore numerico o 'MAX'")
+        self.spin.valueChanged.connect(self._on_spin_changed)
+        h.addWidget(self.spin)
 
     def value(self) -> int:
-        return self._value
+        return int(self.spin.value())
 
     def setValue(self, v: int) -> None:
         v = max(0, min(int(v), QTY_MAX))
-        if v == self._value:
+        if v == int(self.spin.value()):
             return
-        self._value = v
         self._suppress = True
         try:
-            if v == QTY_MAX:
-                self.cb_max.setChecked(True)
-                self.slider.setEnabled(False)
-                self.lbl.setText("MAX")
-            else:
-                self.cb_max.setChecked(False)
-                self.slider.setEnabled(self.isEnabled())
-                self.slider.setValue(min(v, QTY_SLIDER_MAX))
-                self.lbl.setText(str(v))
+            self.spin.setValue(v)
+            self._sync_slider_from_value(v)
         finally:
             self._suppress = False
 
-    def _on_slider_changed(self, v: int) -> None:
-        if self._suppress or self.cb_max.isChecked():
-            return
-        self._value = int(v)
-        self.lbl.setText(str(v))
-        self.valueChanged.emit(self._value)
+    def _sync_slider_from_value(self, v: int) -> None:
+        if v == QTY_MAX:
+            self.slider.setValue(self.MAX_POSITION)
+        elif v >= self.PRECISE_MAX:
+            self.slider.setValue(self.PRECISE_MAX)
+        else:
+            self.slider.setValue(int(v))
 
-    def _on_max_toggled(self, checked: bool) -> None:
+    def _on_slider_changed(self, pos: int) -> None:
         if self._suppress:
             return
-        if checked:
-            self._value = QTY_MAX
-            self.slider.setEnabled(False)
-            self.lbl.setText("MAX")
-        else:
-            self._value = int(self.slider.value())
-            self.slider.setEnabled(self.isEnabled())
-            self.lbl.setText(str(self._value))
-        self.valueChanged.emit(self._value)
+        value = QTY_MAX if pos == self.MAX_POSITION else pos
+        self._suppress = True
+        try:
+            self.spin.setValue(value)
+        finally:
+            self._suppress = False
+        self.valueChanged.emit(value)
+
+    def _on_spin_changed(self, v: int) -> None:
+        if self._suppress:
+            return
+        self._suppress = True
+        try:
+            self._sync_slider_from_value(v)
+        finally:
+            self._suppress = False
+        self.valueChanged.emit(int(v))
 
     def setEnabled(self, enabled: bool) -> None:
         super().setEnabled(enabled)
-        # Lo slider resta disabilitato se è attivo MAX, anche se il widget è enabled.
-        self.slider.setEnabled(enabled and not self.cb_max.isChecked())
-        self.cb_max.setEnabled(enabled)
+        self.slider.setEnabled(enabled)
+        self.spin.setEnabled(enabled)
 
 
 class PriceSlider(QtWidgets.QWidget):
-    """Slider 0..PRICE_SLIDER_MAX + spinbox compatto (per valori oltre il range slider).
+    """Slider tra price_min e price_max della merce + spinbox editabile.
 
-    Lo spinbox è la fonte di verità: lo slider riflette il valore quando è
-    entro range, altrimenti si attesta al massimo (lo spinbox accetta fino a
-    999_999 per i casi atipici).
+    Il range dello slider è specifico per merce e va configurato con
+    `set_slider_range(min, max)`. Lo spinbox accetta sempre valori arbitrari
+    fino a 999_999 (utile per override anomali).
     """
 
     valueChanged = QtCore.Signal(int)
@@ -107,15 +142,16 @@ class PriceSlider(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._suppress = False
+        self._slider_min = 0
+        self._slider_max = 1
 
         h = QtWidgets.QHBoxLayout(self)
         h.setContentsMargins(0, 0, 0, 0)
-        h.setSpacing(4)
+        h.setSpacing(6)
 
         self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        self.slider.setRange(0, PRICE_SLIDER_MAX)
-        self.slider.setSingleStep(5)
-        self.slider.setPageStep(20)
+        self.slider.setRange(0, 1)
+        self.slider.setMinimumWidth(140)
         self.slider.valueChanged.connect(self._on_slider_changed)
         h.addWidget(self.slider, 1)
 
@@ -125,24 +161,39 @@ class PriceSlider(QtWidgets.QWidget):
         self.spin.setAlignment(QtCore.Qt.AlignRight)
         self.spin.setMinimumWidth(60)
         self.spin.setMaximumWidth(80)
-        self.spin.valueChanged.connect(self._on_spin_changed)
-        # Click destro sullo spinbox → context menu (gestito esternamente)
         self.spin.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.spin.setToolTip("Inserisci valore numerico (override illimitato)")
+        self.spin.valueChanged.connect(self._on_spin_changed)
         h.addWidget(self.spin)
+
+    def set_slider_range(self, min_val: int, max_val: int) -> None:
+        self._slider_min = max(0, int(min_val))
+        self._slider_max = max(self._slider_min + 1, int(max_val))
+        self.slider.setRange(self._slider_min, self._slider_max)
+        span = self._slider_max - self._slider_min
+        # Step adattati al range della merce: ~1% del range, minimo 1.
+        self.slider.setSingleStep(max(1, span // 100))
+        self.slider.setPageStep(max(5, span // 10))
+        self.slider.setToolTip(f"Slider {self._slider_min}–{self._slider_max} €/t")
+        self._sync_slider_from_value(self.spin.value())
 
     def value(self) -> int:
         return int(self.spin.value())
 
     def setValue(self, v: int) -> None:
         v = max(0, min(int(v), 999_999))
-        if v == self.spin.value() and self.slider.value() == min(v, PRICE_SLIDER_MAX):
+        if v == int(self.spin.value()):
             return
         self._suppress = True
         try:
             self.spin.setValue(v)
-            self.slider.setValue(min(v, PRICE_SLIDER_MAX))
+            self._sync_slider_from_value(v)
         finally:
             self._suppress = False
+
+    def _sync_slider_from_value(self, v: int) -> None:
+        clamped = max(self._slider_min, min(int(v), self._slider_max))
+        self.slider.setValue(clamped)
 
     def _on_slider_changed(self, v: int) -> None:
         if self._suppress:
@@ -159,7 +210,7 @@ class PriceSlider(QtWidgets.QWidget):
             return
         self._suppress = True
         try:
-            self.slider.setValue(min(int(v), PRICE_SLIDER_MAX))
+            self._sync_slider_from_value(v)
         finally:
             self._suppress = False
         self.valueChanged.emit(int(v))

@@ -12,6 +12,7 @@ from ..constants import (
     MODE_LABEL,
     QTY_MAX,
 )
+PRICE_SLIDER_FALLBACK_MAX = 500  # range slider se la merce non ha price_max nel config
 from ..icons import good_icon
 from ..store import Store
 from .row_widgets import PriceSlider, QtySlider, _ModifierToolButton
@@ -206,12 +207,12 @@ class GoodsTable(QtWidgets.QWidget):
         self.table.setColumnWidth(self.COL_NAME,    100)
         self.table.setColumnWidth(self.COL_ACTION,  100)
         self.table.setColumnWidth(self.COL_L_MODE,   90)
-        self.table.setColumnWidth(self.COL_L_QTY,   140)
-        self.table.setColumnWidth(self.COL_L_PRICE, 130)
+        self.table.setColumnWidth(self.COL_L_QTY,   220)
+        self.table.setColumnWidth(self.COL_L_PRICE, 220)
         self.table.setColumnWidth(self.COL_L_ADV,    90)
         self.table.setColumnWidth(self.COL_U_MODE,   90)
-        self.table.setColumnWidth(self.COL_U_QTY,   140)
-        self.table.setColumnWidth(self.COL_U_PRICE, 130)
+        self.table.setColumnWidth(self.COL_U_QTY,   220)
+        self.table.setColumnWidth(self.COL_U_PRICE, 220)
         self.table.setColumnWidth(self.COL_U_ADV,    90)
 
         # Costruisce header di sezione + righe merci
@@ -270,6 +271,9 @@ class GoodsTable(QtWidgets.QWidget):
             self.table.setCellWidget(row, c_qty, qty_w)
 
             price_w = PriceSlider()
+            p_min = int(g.get("price_min") or 0)
+            p_max = int(g.get("price_max") or PRICE_SLIDER_FALLBACK_MAX)
+            price_w.set_slider_range(p_min, p_max)
             price_w.valueChanged.connect(
                 lambda _v, gid=gid, side=side: self._emit_trade(gid, side))
             price_w.spin.customContextMenuRequested.connect(

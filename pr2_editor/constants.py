@@ -31,12 +31,6 @@ NATIONS_AVAILABLE = ["spagna", "francia", "inghilterra", "olanda", "pirata"]
 # Conversione livello magazzino -> tonnellate di capienza
 WAREHOUSE_TONS_PER_LEVEL = 800
 
-# Range pratici per gli slider nella GoodsTable.
-# Sopra QTY_SLIDER_MAX: la quantita' diventa QTY_MAX (sentinella "MAX" nel formato).
-# Sopra PRICE_SLIDER_MAX: lo spinbox di overflow consente fino a 999_999.
-QTY_SLIDER_MAX = 1600
-PRICE_SLIDER_MAX = 500
-
 # Divisione delle 20 merci in 5 sezioni mostrate nella GoodsTable.
 # Ogni sezione ha 4 merci consecutive per good_id.
 GOOD_SECTIONS: list[tuple[str, list[int]]] = [
