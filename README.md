@@ -16,10 +16,24 @@ Decodifica/codifica del formato, builder JSON → `.ahr`, e una GUI desktop per 
 
 ```
 .
-├── ahr.py                    # decoder/encoder/builder + CLI
-├── gui.py                    # GUI desktop PySide6
+├── ahr.py                    # decoder/encoder/builder + CLI (libreria standalone)
+├── pr2_editor/               # package della GUI (PySide6)
+│   ├── __main__.py           #   `python -m pr2_editor`
+│   ├── app.py                #   main(): QApplication + MainWindow
+│   ├── constants.py
+│   ├── icons.py
+│   ├── store.py              #   config + user_state (override di partita)
+│   ├── route.py              #   modello della rotta corrente
+│   ├── main_window.py
+│   └── widgets/
+│       ├── goods_table.py
+│       ├── add_stop_dialog.py
+│       ├── manage_cities_dialog.py
+│       └── qty_spinbox.py
+├── tests/                    # pytest: setter di Store, modello Route, roundtrip ahr
 ├── pr2_config.json           # config statico: 20 merci + 60 città (read-only)
 ├── user_state.json           # stato locale utente (gitignored)
+├── pyproject.toml            # dipendenze PySide6 + dev pytest
 ├── README.md
 ├── port-royal2-2-map.jpg     # mappa di riferimento
 ├── icons/                    # icone merci (segnaposti francesi da elzetia.com)
@@ -31,6 +45,14 @@ Decodifica/codifica del formato, builder JSON → `.ahr`, e una GUI desktop per 
     │   └── example-route.json
     └── test/                 # fixture .ahr per regression test
         └── fixture_rotta01.ahr
+```
+
+## Setup dell'ambiente
+
+```bash
+# Crea il venv con Python 3.13 (compatibile con PySide6) e installa le dipendenze
+uv venv --python 3.13 .venv
+uv pip install --python .venv/bin/python -e ".[dev]"
 ```
 
 ## Uso CLI (`ahr.py`)
@@ -58,11 +80,12 @@ python ahr.py decode-dir rotte/input rotte/parsed
 python ahr.py test rotte/test
 ```
 
-## Uso GUI (`gui.py`)
+## Uso GUI
 
 ```bash
-pip install PySide6
-python gui.py
+.venv/bin/python -m pr2_editor
+# oppure, dopo `pip install -e .`:
+pr2-editor
 ```
 
 Interfaccia in italiano con:
@@ -71,6 +94,17 @@ Interfaccia in italiano con:
 - Bottoni 💰 prezzi consigliati con modificatori Ctrl/Shift
 - Context menu su prezzo (Min/Mercato/Max), su merce (copia/incolla/reset), su stop (copia/incolla)
 - `Ctrl+S` / `Ctrl+Shift+S` per salvataggio
+- Menu **Strumenti → Gestisci città**: livello magazzino, nazione corrente, override prezzi consigliati per partita
+
+## Test
+
+```bash
+# Regression sul codec .ahr
+python ahr.py test rotte/test
+
+# Test pytest (Store, Route, roundtrip)
+.venv/bin/pytest
+```
 
 ## Formato `.ahr` (sintesi)
 

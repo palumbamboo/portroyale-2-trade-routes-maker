@@ -1,7 +1,19 @@
 [project]
 name = "portroyale-2-trade-routes-maker"
-version = "0.1.0"
-requires-python = ">=3.9"
+version = "0.5.0"
+description = "Editor desktop per rotte commerciali (.ahr) di Port Royale 2 - Impero & Pirati"
+requires-python = ">=3.10"
 dependencies = [
     "pyside6>=6.10.3",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+]
+
+[project.scripts]
+pr2-editor = "pr2_editor.app:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
