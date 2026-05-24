@@ -1,0 +1,7 @@
+[project]
+name = "portroyale-2-trade-routes-maker"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = [
+    "pyside6>=6.10.3",
+]
