@@ -84,24 +84,20 @@ class _SectionHeaderWidget(QtWidgets.QWidget):
         btn_adv.clicked.connect(lambda: self.advised_apply.emit(self.section_idx))
         h.addWidget(btn_adv)
 
-        # Input quantità + applica
+        # Input quantità (stesso slider delle righe) + applica
         h.addSpacing(4)
         h.addWidget(QtWidgets.QLabel("Qty:"))
-        self.sp_qty = QtWidgets.QSpinBox()
-        self.sp_qty.setRange(0, QTY_MAX)
-        self.sp_qty.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
-        self.sp_qty.setMinimumWidth(70)
-        self.sp_qty.setMaximumWidth(80)
-        self.sp_qty.setSpecialValueText("0")
-        h.addWidget(self.sp_qty)
+        self.qty_slider = QtySlider()
+        self.qty_slider.setToolTip(
+            "Trascina (0–2000, fine corsa = MAX) oppure inserisci a mano. "
+            "Premi 'Applica' per impostarla su carico+scarico di tutte le manuali della sezione.")
+        h.addWidget(self.qty_slider, 1)
         btn_qty = QtWidgets.QToolButton()
         btn_qty.setText("Applica")
         btn_qty.setToolTip(
             "Imposta questa quantità a carico+scarico di tutte le merci manuali della sezione")
-        btn_qty.clicked.connect(lambda: self.qty_apply.emit(self.section_idx, int(self.sp_qty.value())))
+        btn_qty.clicked.connect(lambda: self.qty_apply.emit(self.section_idx, self.qty_slider.value()))
         h.addWidget(btn_qty)
-
-        h.addStretch(1)
 
     def set_has_warehouse(self, has_wh: bool) -> None:
         self._has_warehouse = has_wh
