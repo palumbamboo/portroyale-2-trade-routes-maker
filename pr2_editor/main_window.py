@@ -11,6 +11,7 @@ from . import APP_NAME, __version__
 from .constants import (
     ACTION_AUTO,
     ACTION_MANUAL,
+    GOOD_SECTIONS,
     ROUTES_DIR,
     WAREHOUSE_PRICE,
 )
@@ -133,6 +134,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.goods_table.copy_good_requested.connect(self._on_copy_good)
         self.goods_table.paste_good_requested.connect(self._on_paste_good)
         self.goods_table.reset_good_requested.connect(self._on_reset_good)
+        self.goods_table.section_action_apply.connect(self._on_section_action_apply)
+        self.goods_table.section_mode_apply.connect(self._on_section_mode_apply)
+        self.goods_table.section_advised_apply.connect(self._on_section_advised_apply)
+        self.goods_table.section_qty_apply.connect(self._on_section_qty_apply)
         self._good_clipboard: dict | None = None
         self._stop_clipboard: dict | None = None
         rv.addWidget(self.goods_table, 1)
@@ -301,6 +306,93 @@ class MainWindow(QtWidgets.QMainWindow):
                 + (f" ({skipped} senza consigliato)" if skipped else ""),
                 4000,
             )
+
+    # --- comandi di sezione ---------------------------------------------
+
+    def _on_section_action_apply(self, section_idx: int, action: int):
+        idx = self._current_stop_idx()
+        if idx is None:
+            return
+        _title, gids = GOOD_SECTIONS[section_idx]
+        for gid in gids:
+            self.route.set_good_action(idx, gid, action)
+        self.statusBar().showMessage(
+            f"Sezione '{_title}': azione '{action}' applicata a {len(gids)} merci", 3000)
+
+    def _on_section_mode_apply(self, section_idx: int, mode: str):
+        idx = self._current_stop_idx()
+        if idx is None:
+            return
+        _title, gids = GOOD_SECTIONS[section_idx]
+        stop = self.route.stops[idx]
+        applied = 0
+        for gid in gids:
+            if stop["actions"][gid] != ACTION_MANUAL:
+                continue
+            for side in ("load", "unload"):
+                t = stop["trades"][gid]
+                qty = t[f"{side}_qty"]
+                price_raw = t[f"{side}_price"]
+                if mode == "warehouse":
+                    price = 0
+                else:
+                    price = price_raw if price_raw != WAREHOUSE_PRICE else 0
+                self.route.set_good_trade(idx, gid, side=side, mode=mode, qty=qty, price=price)
+                applied += 1
+        self.statusBar().showMessage(
+            f"Sezione '{_title}': modalità '{mode}' applicata a {applied} valori", 3000)
+
+    def _on_section_advised_apply(self, section_idx: int):
+        idx = self._current_stop_idx()
+        if idx is None:
+            return
+        _title, gids = GOOD_SECTIONS[section_idx]
+        stop = self.route.stops[idx]
+        city_key = self.store.cities_by_id[stop["trailer"]["city_id"]]["key"]
+        applied, skipped = 0, 0
+        for gid in gids:
+            if stop["actions"][gid] != ACTION_MANUAL:
+                continue
+            for side in ("load", "unload"):
+                price_side = "buy" if side == "load" else "sell"
+                adv = self.store.city_advised_price(city_key, gid, price_side)
+                if adv <= 0:
+                    skipped += 1
+                    continue
+                t = stop["trades"][gid]
+                qty = t[f"{side}_qty"]
+                mode = t[f"{side}_mode"]
+                if mode == "warehouse":
+                    mode = "city"
+                self.route.set_good_trade(idx, gid, side=side, mode=mode, qty=qty, price=adv)
+                applied += 1
+        msg = f"Sezione '{_title}': applicati {applied} prezzi consigliati"
+        if skipped:
+            msg += f" ({skipped} senza consigliato)"
+        self.statusBar().showMessage(msg, 4000)
+
+    def _on_section_qty_apply(self, section_idx: int, qty: int):
+        idx = self._current_stop_idx()
+        if idx is None:
+            return
+        _title, gids = GOOD_SECTIONS[section_idx]
+        stop = self.route.stops[idx]
+        applied = 0
+        for gid in gids:
+            if stop["actions"][gid] != ACTION_MANUAL:
+                continue
+            for side in ("load", "unload"):
+                t = stop["trades"][gid]
+                mode = t[f"{side}_mode"]
+                price_raw = t[f"{side}_price"]
+                if mode == "warehouse":
+                    price = 0
+                else:
+                    price = price_raw if price_raw != WAREHOUSE_PRICE else 0
+                self.route.set_good_trade(idx, gid, side=side, mode=mode, qty=qty, price=price)
+                applied += 1
+        self.statusBar().showMessage(
+            f"Sezione '{_title}': qty={qty} impostata su {applied} valori", 3000)
 
     # --- copia/incolla ---------------------------------------------------
 
