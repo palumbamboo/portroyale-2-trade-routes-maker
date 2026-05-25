@@ -13,9 +13,65 @@ from ..constants import (
 )
 from ..icons import good_icon
 from ..store import Store
+from ..style import TINT_ROUTE_EXCLUDED, TINT_STOP_EXCLUDED
 from .row_widgets import PriceSlider, QtySlider, _ModifierToolButton
 
 PRICE_SLIDER_FALLBACK_MAX = 500  # used if a good has no price_max in config
+
+
+def _build_bulk_menu(parent: QtWidgets.QWidget,
+                     emit_action,
+                     emit_mode,
+                     emit_advised,
+                     emit_qty_with_slider,
+                     mode_warehouse_enabled: bool) -> QtWidgets.QMenu:
+    """Compose the popover menu shared by section headers and the bulk-selection toolbar.
+
+    `emit_*` callbacks are invoked when the corresponding menu item is triggered.
+    """
+    menu = QtWidgets.QMenu(parent)
+
+    sub_action = menu.addMenu("Set action…")
+    for act_val in (ACTION_AUTO, ACTION_EXCLUDED, ACTION_MANUAL):
+        a = sub_action.addAction(ACTION_LABEL[act_val])
+        a.triggered.connect(lambda checked=False, v=act_val: emit_action(v))
+
+    sub_mode = menu.addMenu("Set mode (manual only)…")
+    a_city = sub_mode.addAction(MODE_LABEL["city"])
+    a_city.triggered.connect(lambda checked=False: emit_mode("city"))
+    a_wh = sub_mode.addAction(MODE_LABEL["warehouse"])
+    a_wh.triggered.connect(lambda checked=False: emit_mode("warehouse"))
+    a_wh.setEnabled(mode_warehouse_enabled)
+    if not mode_warehouse_enabled:
+        a_wh.setToolTip("City has no warehouse")
+
+    menu.addSeparator()
+
+    a_adv = menu.addAction("💰 Apply recommended prices (manual only)")
+    a_adv.triggered.connect(lambda checked=False: emit_advised())
+
+    # Qty submenu with an inline slider so the user can adjust without a modal dialog
+    qty_widget = QtWidgets.QWidget()
+    qh = QtWidgets.QHBoxLayout(qty_widget)
+    qh.setContentsMargins(8, 4, 8, 4)
+    qh.setSpacing(6)
+    qh.addWidget(QtWidgets.QLabel("Qty:"))
+    qty_slider = QtySlider()
+    qty_slider.setMinimumWidth(220)
+    qty_slider.setMaximumWidth(260)
+    qh.addWidget(qty_slider)
+    btn_apply_qty = QtWidgets.QPushButton("Apply")
+    btn_apply_qty.clicked.connect(lambda checked=False: (
+        emit_qty_with_slider(qty_slider.value()),
+        menu.close(),
+    ))
+    qh.addWidget(btn_apply_qty)
+    qty_action = QtWidgets.QWidgetAction(menu)
+    qty_action.setDefaultWidget(qty_widget)
+    sub_qty = menu.addMenu("Set qty…")
+    sub_qty.addAction(qty_action)
+
+    return menu
 
 
 def _row_for_gid(gid: int) -> int:
@@ -46,190 +102,99 @@ class _SectionHeaderWidget(QtWidgets.QWidget):
         self._build(title)
 
     def _build(self, title: str) -> None:
+        self.setObjectName("sectionHeader")
         h = QtWidgets.QHBoxLayout(self)
-        h.setContentsMargins(8, 4, 8, 4)
+        h.setContentsMargins(10, 4, 10, 4)
         h.setSpacing(8)
 
-        lbl = QtWidgets.QLabel(f"▾ <b>{title}</b>")
+        lbl = QtWidgets.QLabel(f"<b>{title}</b>")
         lbl.setTextFormat(QtCore.Qt.RichText)
-        lbl.setMinimumWidth(190)
         h.addWidget(lbl)
-
-        # Action dropdown
-        self.cb_action = QtWidgets.QComboBox()
-        self.cb_action.addItem("Action…", None)
-        self.cb_action.addItem(ACTION_LABEL[ACTION_AUTO], ACTION_AUTO)
-        self.cb_action.addItem(ACTION_LABEL[ACTION_EXCLUDED], ACTION_EXCLUDED)
-        self.cb_action.addItem(ACTION_LABEL[ACTION_MANUAL], ACTION_MANUAL)
-        self.cb_action.setToolTip(
-            "Apply the same action to all 4 goods in this section")
-        self.cb_action.currentIndexChanged.connect(self._on_action_changed)
-        h.addWidget(self.cb_action)
-
-        # Mode dropdown (city / warehouse)
-        self.cb_mode = QtWidgets.QComboBox()
-        self.cb_mode.addItem("Mode…", None)
-        self.cb_mode.addItem(f"All: {MODE_LABEL['city']}", "city")
-        self.cb_mode.addItem(f"All: {MODE_LABEL['warehouse']}", "warehouse")
-        self.cb_mode.setToolTip(
-            "Apply the mode (load+unload) to every manual good in this section")
-        self.cb_mode.currentIndexChanged.connect(self._on_mode_changed)
-        h.addWidget(self.cb_mode)
-
-        # Apply recommended prices button
-        btn_adv = QtWidgets.QToolButton()
-        btn_adv.setText("💰 Apply recommended prices")
-        btn_adv.setToolTip(
-            "Apply recommended buy/sell prices to every manual good in this section")
-        btn_adv.clicked.connect(lambda: self.advised_apply.emit(self.section_idx))
-        h.addWidget(btn_adv)
-
-        # Qty input (same slider as row cells) + apply button — fixed width
-        h.addSpacing(4)
-        h.addWidget(QtWidgets.QLabel("Qty:"))
-        self.qty_slider = QtySlider()
-        self.qty_slider.setMinimumWidth(210)
-        self.qty_slider.setMaximumWidth(240)
-        self.qty_slider.setToolTip(
-            "Drag (0–2000, end = MAX) or type a value. "
-            "Press 'Apply' to set it on load+unload of every manual good in this section.")
-        h.addWidget(self.qty_slider)
-        btn_qty = QtWidgets.QToolButton()
-        btn_qty.setText("Apply")
-        btn_qty.setToolTip(
-            "Set this quantity on load+unload of every manual good in this section")
-        btn_qty.clicked.connect(lambda: self.qty_apply.emit(self.section_idx, self.qty_slider.value()))
-        h.addWidget(btn_qty)
-
         h.addStretch(1)
 
+        self.btn_actions = QtWidgets.QToolButton()
+        self.btn_actions.setText("Section actions  ⋮")
+        self.btn_actions.setPopupMode(QtWidgets.QToolButton.InstantPopup)
+        self.btn_actions.setToolTip(
+            "Bulk operations for this section (set action/mode, apply recommended prices, set quantity)")
+        self._rebuild_menu()
+        h.addWidget(self.btn_actions)
+
+    def _rebuild_menu(self) -> None:
+        menu = _build_bulk_menu(
+            self,
+            emit_action=lambda v: self.action_apply.emit(self.section_idx, int(v)),
+            emit_mode=lambda m: self.mode_apply.emit(self.section_idx, str(m)),
+            emit_advised=lambda: self.advised_apply.emit(self.section_idx),
+            emit_qty_with_slider=lambda q: self.qty_apply.emit(self.section_idx, int(q)),
+            mode_warehouse_enabled=self._has_warehouse,
+        )
+        self.btn_actions.setMenu(menu)
+
     def set_has_warehouse(self, has_wh: bool) -> None:
+        if has_wh == self._has_warehouse:
+            return
         self._has_warehouse = has_wh
-        idx_wh = self.cb_mode.findData("warehouse")
-        if idx_wh >= 0:
-            model = self.cb_mode.model()
-            item = model.item(idx_wh)
-            if item is not None:
-                item.setEnabled(has_wh)
-                tooltip = ("Apply warehouse mode to every manual good"
-                           if has_wh else "City has no warehouse")
-                item.setToolTip(tooltip)
-
-    def _on_action_changed(self, _idx: int) -> None:
-        action = self.cb_action.currentData()
-        if action is None:
-            return
-        self.action_apply.emit(self.section_idx, int(action))
-        self.cb_action.blockSignals(True)
-        self.cb_action.setCurrentIndex(0)
-        self.cb_action.blockSignals(False)
-
-    def _on_mode_changed(self, _idx: int) -> None:
-        mode = self.cb_mode.currentData()
-        if mode is None:
-            return
-        self.mode_apply.emit(self.section_idx, str(mode))
-        self.cb_mode.blockSignals(True)
-        self.cb_mode.setCurrentIndex(0)
-        self.cb_mode.blockSignals(False)
+        self._rebuild_menu()
 
 
-class _BulkActionBar(QtWidgets.QFrame):
-    """Toolbar visible when one or more goods are selected via checkbox."""
+class _BulkInline(QtWidgets.QFrame):
+    """Inline compact bulk-selection panel: count + popover menu + clear button."""
 
-    action_apply = QtCore.Signal(int)        # action_value
-    mode_apply = QtCore.Signal(str)          # mode
+    action_apply = QtCore.Signal(int)
+    mode_apply = QtCore.Signal(str)
     advised_apply = QtCore.Signal()
-    qty_apply = QtCore.Signal(int)           # qty_value
+    qty_apply = QtCore.Signal(int)
     clear_requested = QtCore.Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.setObjectName("bulkInline")
         self._has_warehouse = False
         self._build()
 
     def _build(self):
         h = QtWidgets.QHBoxLayout(self)
-        h.setContentsMargins(8, 4, 8, 4)
+        h.setContentsMargins(8, 2, 8, 2)
         h.setSpacing(8)
 
         self.lbl_count = QtWidgets.QLabel("0 selected")
-        self.lbl_count.setStyleSheet("font-weight: bold;")
+        self.lbl_count.setStyleSheet("font-weight: 600;")
         h.addWidget(self.lbl_count)
 
-        self.cb_action = QtWidgets.QComboBox()
-        self.cb_action.addItem("Action…", None)
-        self.cb_action.addItem(ACTION_LABEL[ACTION_AUTO], ACTION_AUTO)
-        self.cb_action.addItem(ACTION_LABEL[ACTION_EXCLUDED], ACTION_EXCLUDED)
-        self.cb_action.addItem(ACTION_LABEL[ACTION_MANUAL], ACTION_MANUAL)
-        self.cb_action.setToolTip("Apply the same action to all selected goods")
-        self.cb_action.currentIndexChanged.connect(self._on_action_changed)
-        h.addWidget(self.cb_action)
-
-        self.cb_mode = QtWidgets.QComboBox()
-        self.cb_mode.addItem("Mode…", None)
-        self.cb_mode.addItem(f"All: {MODE_LABEL['city']}", "city")
-        self.cb_mode.addItem(f"All: {MODE_LABEL['warehouse']}", "warehouse")
-        self.cb_mode.setToolTip("Apply mode to every manual selected good")
-        self.cb_mode.currentIndexChanged.connect(self._on_mode_changed)
-        h.addWidget(self.cb_mode)
-
-        btn_adv = QtWidgets.QToolButton()
-        btn_adv.setText("💰 Apply recommended prices")
-        btn_adv.setToolTip(
-            "Apply recommended buy/sell prices to every manual selected good")
-        btn_adv.clicked.connect(self.advised_apply)
-        h.addWidget(btn_adv)
-
-        h.addSpacing(4)
-        h.addWidget(QtWidgets.QLabel("Qty:"))
-        self.qty_slider = QtySlider()
-        self.qty_slider.setMinimumWidth(210)
-        self.qty_slider.setMaximumWidth(240)
-        h.addWidget(self.qty_slider)
-        btn_qty = QtWidgets.QToolButton()
-        btn_qty.setText("Apply")
-        btn_qty.setToolTip("Set this quantity on load+unload of every manual selected good")
-        btn_qty.clicked.connect(lambda: self.qty_apply.emit(self.qty_slider.value()))
-        h.addWidget(btn_qty)
-
-        h.addStretch(1)
+        self.btn_actions = QtWidgets.QToolButton()
+        self.btn_actions.setText("Bulk actions  ⋮")
+        self.btn_actions.setPopupMode(QtWidgets.QToolButton.InstantPopup)
+        self.btn_actions.setToolTip(
+            "Bulk operations on the selected goods (set action/mode, apply prices, set qty)")
+        self._rebuild_menu()
+        h.addWidget(self.btn_actions)
 
         btn_clear = QtWidgets.QToolButton()
-        btn_clear.setText("Clear selection")
+        btn_clear.setText("Clear")
+        btn_clear.setToolTip("Clear the current multi-selection")
         btn_clear.clicked.connect(self.clear_requested)
         h.addWidget(btn_clear)
+
+    def _rebuild_menu(self) -> None:
+        menu = _build_bulk_menu(
+            self,
+            emit_action=lambda v: self.action_apply.emit(int(v)),
+            emit_mode=lambda m: self.mode_apply.emit(str(m)),
+            emit_advised=lambda: self.advised_apply.emit(),
+            emit_qty_with_slider=lambda q: self.qty_apply.emit(int(q)),
+            mode_warehouse_enabled=self._has_warehouse,
+        )
+        self.btn_actions.setMenu(menu)
 
     def set_count(self, n: int) -> None:
         self.lbl_count.setText(f"{n} selected")
 
     def set_has_warehouse(self, has_wh: bool) -> None:
+        if has_wh == self._has_warehouse:
+            return
         self._has_warehouse = has_wh
-        idx_wh = self.cb_mode.findData("warehouse")
-        if idx_wh >= 0:
-            model = self.cb_mode.model()
-            item = model.item(idx_wh)
-            if item is not None:
-                item.setEnabled(has_wh)
-
-    def _on_action_changed(self, _idx: int) -> None:
-        action = self.cb_action.currentData()
-        if action is None:
-            return
-        self.action_apply.emit(int(action))
-        self.cb_action.blockSignals(True)
-        self.cb_action.setCurrentIndex(0)
-        self.cb_action.blockSignals(False)
-
-    def _on_mode_changed(self, _idx: int) -> None:
-        mode = self.cb_mode.currentData()
-        if mode is None:
-            return
-        self.mode_apply.emit(str(mode))
-        self.cb_mode.blockSignals(True)
-        self.cb_mode.setCurrentIndex(0)
-        self.cb_mode.blockSignals(False)
+        self._rebuild_menu()
 
 
 class GoodsTable(QtWidgets.QWidget):
@@ -289,35 +254,43 @@ class GoodsTable(QtWidgets.QWidget):
     def _build(self):
         v = QtWidgets.QVBoxLayout(self)
         v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(6)
 
-        # Filter search
-        filter_row = QtWidgets.QHBoxLayout()
-        filter_row.setContentsMargins(4, 0, 4, 0)
-        filter_row.addWidget(QtWidgets.QLabel("Filter:"))
+        # Single toolbar row hosting both the filter input and the bulk-selection panel.
+        toolbar = QtWidgets.QFrame()
+        toolbar.setObjectName("tableToolbar")
+        tb_layout = QtWidgets.QHBoxLayout(toolbar)
+        tb_layout.setContentsMargins(0, 0, 0, 0)
+        tb_layout.setSpacing(8)
+
         self.ed_filter = QtWidgets.QLineEdit()
-        self.ed_filter.setPlaceholderText("type to filter goods by name…")
+        self.ed_filter.setPlaceholderText("🔍  Filter goods by name…")
         self.ed_filter.setClearButtonEnabled(True)
+        self.ed_filter.setMaximumWidth(360)
         self.ed_filter.textChanged.connect(self._apply_filter)
-        filter_row.addWidget(self.ed_filter, 1)
-        v.addLayout(filter_row)
+        tb_layout.addWidget(self.ed_filter)
 
-        # Bulk action bar (hidden until any checkbox is ticked)
-        self.bulk_bar = _BulkActionBar()
+        tb_layout.addStretch(1)
+
+        # Bulk-selection panel (hidden until any checkbox is ticked)
+        self.bulk_bar = _BulkInline()
         self.bulk_bar.setVisible(False)
         self.bulk_bar.action_apply.connect(self._emit_bulk_action)
         self.bulk_bar.mode_apply.connect(self._emit_bulk_mode)
         self.bulk_bar.advised_apply.connect(self._emit_bulk_advised)
         self.bulk_bar.qty_apply.connect(self._emit_bulk_qty)
         self.bulk_bar.clear_requested.connect(self.clear_selection)
-        v.addWidget(self.bulk_bar)
+        tb_layout.addWidget(self.bulk_bar)
+
+        v.addWidget(toolbar)
 
         self.table = QtWidgets.QTableWidget(self.N_ROWS, self.N_COLS)
         self.table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._on_context_menu)
         self.table.setHorizontalHeaderLabels([
             "", "Good", "Action",
-            "Mode", "Qty", "€/t", "💰",
-            "Mode", "Qty", "€/t", "💰",
+            "Load · Mode", "Load · Qty", "Load · €/t", "Load · 💰",
+            "Unload · Mode", "Unload · Qty", "Unload · €/t", "Unload · 💰",
         ])
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
@@ -330,17 +303,17 @@ class GoodsTable(QtWidgets.QWidget):
         h.setSectionResizeMode(self.COL_ICON, QtWidgets.QHeaderView.Interactive)
         for c in range(1, self.N_COLS):
             h.setSectionResizeMode(c, QtWidgets.QHeaderView.Interactive)
-        self.table.setColumnWidth(self.COL_ICON,    60)   # checkbox + icon
+        self.table.setColumnWidth(self.COL_ICON,    54)   # checkbox + icon
         self.table.setColumnWidth(self.COL_NAME,   110)
-        self.table.setColumnWidth(self.COL_ACTION, 100)
-        self.table.setColumnWidth(self.COL_L_MODE,  90)
-        self.table.setColumnWidth(self.COL_L_QTY,  220)
-        self.table.setColumnWidth(self.COL_L_PRICE,220)
-        self.table.setColumnWidth(self.COL_L_ADV,   90)
-        self.table.setColumnWidth(self.COL_U_MODE,  90)
-        self.table.setColumnWidth(self.COL_U_QTY,  220)
-        self.table.setColumnWidth(self.COL_U_PRICE,220)
-        self.table.setColumnWidth(self.COL_U_ADV,   90)
+        self.table.setColumnWidth(self.COL_ACTION,  92)
+        self.table.setColumnWidth(self.COL_L_MODE,  74)
+        self.table.setColumnWidth(self.COL_L_QTY,  170)
+        self.table.setColumnWidth(self.COL_L_PRICE,170)
+        self.table.setColumnWidth(self.COL_L_ADV,   76)
+        self.table.setColumnWidth(self.COL_U_MODE,  74)
+        self.table.setColumnWidth(self.COL_U_QTY,  170)
+        self.table.setColumnWidth(self.COL_U_PRICE,170)
+        self.table.setColumnWidth(self.COL_U_ADV,   76)
 
         # Build section headers + good rows
         for sec_idx, (title, gids) in enumerate(GOOD_SECTIONS):
@@ -562,8 +535,8 @@ class GoodsTable(QtWidgets.QWidget):
                         produced: bool):
         """Visual style for a good row, combining exclusion + 'produced here' markers.
 
-        - route_excluded: in the global exclusion list -> strikethrough red name
-        - stop_excluded: this stop's action == ACTION_EXCLUDED -> italic gray name
+        - route_excluded: in the global exclusion list -> strikethrough red name + pink tint
+        - stop_excluded: this stop's action == ACTION_EXCLUDED -> italic gray name + gray tint
         - produced: the current stop's city produces this good -> green dot prefix
         Both exclusion modes can coexist with 'produced'; route style is dominant.
         """
@@ -583,15 +556,31 @@ class GoodsTable(QtWidgets.QWidget):
         if route_excluded:
             font.setStrikeOut(True)
             name_item.setForeground(QtGui.QBrush(QtGui.QColor(180, 50, 50)))
+            tint = TINT_ROUTE_EXCLUDED
             tooltip_parts.append("Excluded by route (global exclusion list)")
         elif stop_excluded:
             font.setItalic(True)
             name_item.setForeground(QtGui.QBrush(QtGui.QColor(140, 140, 140)))
+            tint = TINT_STOP_EXCLUDED
             tooltip_parts.append("Excluded at this stop")
         else:
             name_item.setData(QtCore.Qt.ForegroundRole, None)
+            tint = None
         name_item.setFont(font)
         name_item.setToolTip(" • ".join(tooltip_parts))
+
+        # Background tint on the name cell (item-based)
+        if tint:
+            name_item.setBackground(QtGui.QBrush(QtGui.QColor(tint)))
+        else:
+            name_item.setBackground(QtGui.QBrush())
+
+        # Apply the same tint to every cell-widget in the row (so the tint spans the full row).
+        sheet = f"background-color: {tint};" if tint else ""
+        for col in range(self.N_COLS):
+            w = self.table.cellWidget(row, col)
+            if w is not None:
+                w.setStyleSheet(sheet)
 
     # --- selection ----------------------------------------------------
 

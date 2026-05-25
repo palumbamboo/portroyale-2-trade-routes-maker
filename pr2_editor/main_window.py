@@ -20,9 +20,10 @@ from .constants import (
 from .icons import good_icon
 from .route import Route
 from .store import Store
+from .style import apply_class_property
 from .widgets.goods_table import GoodsTable
 from .widgets.manage_cities_dialog import ManageCitiesDialog
-from .widgets.map_window import MapWindow
+from .widgets.map_view import MapView
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -33,8 +34,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._wire_route()
         self.store.user_state_changed.connect(self._on_user_state_changed)
         self.setWindowTitle(self._title())
-        self.resize(1380, 820)
-        self._map_window: MapWindow | None = None
+        self.resize(1320, 820)
         self._build_menu()
         self._build_central()
         self._build_statusbar()
@@ -45,37 +45,30 @@ class MainWindow(QtWidgets.QMainWindow):
         self._update_stop_panel(idx)
         self._refresh_table_for_stop(idx)
         self._refresh_status()
-        if self._map_window is not None:
-            self._map_window.refresh_tooltips()
+        self.map_view.refresh_tooltips()
 
-    def _sync_map_window(self):
-        if self._map_window is None:
-            return
+    def _sync_map_view(self):
         cids = [s["trailer"]["city_id"] for s in self.route.stops]
-        self._map_window.set_route(cids)
+        self.map_view.set_route(cids)
 
     def _on_show_map_view(self):
-        if self._map_window is None:
-            self._map_window = MapWindow(self.store, parent=self)
-            self._map_window.city_clicked.connect(self._on_map_city_clicked)
-            self._map_window.city_right_clicked.connect(self._on_map_city_right_clicked)
-            self._map_window.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
-        self._sync_map_window()
-        self._map_window.show()
-        self._map_window.raise_()
-        self._map_window.activateWindow()
+        self._sync_map_view()
+        self.right_stack.setCurrentWidget(self.map_page)
+        self.map_view.setFocus()
+
+    def _exit_map_view(self):
+        if self.right_stack.currentWidget() is self.map_page:
+            self.right_stack.setCurrentWidget(self.goods_page)
 
     def _on_map_city_clicked(self, city_id: int):
         if len(self.route.stops) >= ahr.MAX_STOPS:
             QtWidgets.QMessageBox.warning(
-                self._map_window or self, "Add stop",
-                f"Maximum {ahr.MAX_STOPS} stops per route.")
+                self, "Add stop", f"Maximum {ahr.MAX_STOPS} stops per route.")
             return
         try:
             idx = self.route.add_stop(int(city_id))
         except Exception as e:
-            QtWidgets.QMessageBox.critical(
-                self._map_window or self, "Error", str(e))
+            QtWidgets.QMessageBox.critical(self, "Error", str(e))
             return
         self.stops_list.setCurrentRow(idx)
 
@@ -83,12 +76,11 @@ class MainWindow(QtWidgets.QMainWindow):
         """Right-click on a map city: if it's in the route, offer to remove its stop(s)."""
         city = self.store.cities_by_id.get(int(city_id))
         name = city["name"] if city else f"city#{city_id}"
-        # Find every stop matching this city (a city can appear more than once in a route)
         matches = [i for i, s in enumerate(self.route.stops)
                    if int(s["trailer"]["city_id"]) == int(city_id)]
         if not matches:
-            return  # nothing to remove for this city
-        menu = QtWidgets.QMenu(self._map_window or self)
+            return
+        menu = QtWidgets.QMenu(self)
         actions: list[tuple[QtGui.QAction, int]] = []
         if len(matches) == 1:
             a = menu.addAction(f"Remove stop '{name}'")
@@ -149,12 +141,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stops_list.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.stops_list.customContextMenuRequested.connect(self._on_stop_context_menu)
         lv.addWidget(self.stops_list, 1)
-        # "Edit route" button opens the map: it is the only way to add/remove stops
-        btn_edit_route = QtWidgets.QPushButton("Edit route")
+        # "Edit route" is the accent primary action: it is the only way to add/remove stops
+        btn_edit_route = QtWidgets.QPushButton("🗺  Edit route")
         btn_edit_route.setToolTip(
             "Open the map view: left-click a city to add a stop, "
             "right-click a stop to remove it. Drag rows above to reorder.")
         btn_edit_route.clicked.connect(self._on_show_map_view)
+        apply_class_property(btn_edit_route, accent=True)
         lv.addWidget(btn_edit_route)
         lv.addWidget(QtWidgets.QLabel("Global exclusions"))
         self.route_excl_list = QtWidgets.QListWidget()
@@ -168,27 +161,43 @@ class MainWindow(QtWidgets.QMainWindow):
         self.route_excl_list.itemChanged.connect(self._on_route_excl_changed)
         lv.addWidget(self.route_excl_list, 1)
 
-        # --- right: city header + goods table ----------
-        right = QtWidgets.QWidget()
-        rv = QtWidgets.QVBoxLayout(right)
-        self.stop_header = QtWidgets.QLabel("(no stop selected)")
-        self.stop_header.setStyleSheet("font-size:14pt; font-weight:bold;")
-        rv.addWidget(self.stop_header)
-        self.stop_meta = QtWidgets.QLabel("")
-        self.stop_meta.setTextFormat(QtCore.Qt.RichText)
-        self.stop_meta.setWordWrap(True)
-        rv.addWidget(self.stop_meta)
-        sep = QtWidgets.QFrame(); sep.setFrameShape(QtWidgets.QFrame.HLine); rv.addWidget(sep)
-        hint = QtWidgets.QLabel(
-            "<i>💰 recommended price &nbsp;•&nbsp; "
-            "Click: only this good+side &nbsp;•&nbsp; "
-            "Ctrl+Click: load+unload &nbsp;•&nbsp; "
-            "Shift+Click: every manual good &nbsp;•&nbsp; "
-            "right-click on price: choose Min/Market/Max</i>"
-        )
-        hint.setTextFormat(QtCore.Qt.RichText)
-        hint.setWordWrap(True)
-        rv.addWidget(hint)
+        # --- right: stacked area (goods page / map page) ---
+        self.right_stack = QtWidgets.QStackedWidget()
+
+        # === Goods page ===
+        self.goods_page = QtWidgets.QWidget()
+        gp_v = QtWidgets.QVBoxLayout(self.goods_page)
+        gp_v.setSpacing(8)
+        gp_v.setContentsMargins(0, 0, 0, 0)
+
+        # Placeholder shown when no stop is selected
+        self.goods_placeholder = QtWidgets.QLabel(
+            "<div style='text-align:center'>"
+            "<h2 style='color:#6b6b73; font-weight:500; margin-bottom:8px'>"
+            "No stop selected</h2>"
+            "<p style='color:#6b6b73; font-size:11pt'>"
+            "Click <b>🗺 Edit route</b> on the left to add cities, "
+            "then pick a stop from the list to edit its goods."
+            "</p></div>")
+        self.goods_placeholder.setTextFormat(QtCore.Qt.RichText)
+        self.goods_placeholder.setAlignment(QtCore.Qt.AlignCenter)
+        self.goods_placeholder.setWordWrap(True)
+        gp_v.addWidget(self.goods_placeholder, 1)
+
+        # Stop info card (hidden until a stop is selected)
+        self.info_card = QtWidgets.QFrame()
+        self.info_card.setObjectName("stopInfoCard")
+        info_v = QtWidgets.QVBoxLayout(self.info_card)
+        info_v.setContentsMargins(14, 10, 14, 10)
+        info_v.setSpacing(2)
+        self.stop_header = QtWidgets.QLabel("")
+        self.stop_header.setStyleSheet("font-size: 15pt; font-weight: 600; color: #1f1f23;")
+        self.stop_subtitle = QtWidgets.QLabel("")
+        self.stop_subtitle.setStyleSheet("color: #4b5765; font-size: 10pt;")
+        info_v.addWidget(self.stop_header)
+        info_v.addWidget(self.stop_subtitle)
+        gp_v.addWidget(self.info_card)
+
         self.goods_table = GoodsTable(self.store)
         self.goods_table.action_changed.connect(self._on_action_changed)
         self.goods_table.trade_changed.connect(self._on_trade_changed)
@@ -206,11 +215,67 @@ class MainWindow(QtWidgets.QMainWindow):
         self.goods_table.bulk_qty_apply.connect(self._on_bulk_qty_apply)
         self._good_clipboard: dict | None = None
         self._stop_clipboard: dict | None = None
-        rv.addWidget(self.goods_table, 1)
+        gp_v.addWidget(self.goods_table, 1)
 
-        splitter.addWidget(left); splitter.addWidget(right)
+        # Info card and goods table start hidden; the placeholder takes the space
+        self.info_card.setVisible(False)
+        self.goods_table.setVisible(False)
+
+        self.right_stack.addWidget(self.goods_page)
+
+        # === Map page ===
+        self.map_page = QtWidgets.QWidget()
+        mp_v = QtWidgets.QVBoxLayout(self.map_page)
+        mp_v.setContentsMargins(0, 0, 0, 0)
+        mp_v.setSpacing(0)
+
+        map_toolbar = QtWidgets.QFrame()
+        map_toolbar.setStyleSheet("QFrame { background-color: #f3f3f5; border-bottom: 1px solid #d8d8dc; }")
+        mt_h = QtWidgets.QHBoxLayout(map_toolbar)
+        mt_h.setContentsMargins(10, 6, 10, 6)
+        mt_h.setSpacing(8)
+
+        btn_exit_map = QtWidgets.QPushButton("✖  Exit edit route  (Esc)")
+        apply_class_property(btn_exit_map, accent=True)
+        btn_exit_map.setToolTip("Return to goods editing")
+        btn_exit_map.clicked.connect(self._exit_map_view)
+        mt_h.addWidget(btn_exit_map)
+
+        btn_fit_map = QtWidgets.QToolButton()
+        btn_fit_map.setText("Fit window")
+        btn_fit_map.clicked.connect(lambda: self.map_view.fit_to_view())
+        mt_h.addWidget(btn_fit_map)
+
+        btn_reset_zoom = QtWidgets.QToolButton()
+        btn_reset_zoom.setText("Reset zoom")
+        btn_reset_zoom.clicked.connect(lambda: self.map_view.reset_zoom())
+        mt_h.addWidget(btn_reset_zoom)
+
+        map_hint = QtWidgets.QLabel(
+            "<i>Left-click a city to add a stop · right-click to remove · "
+            "Ctrl + scroll to zoom · drag to pan</i>")
+        map_hint.setTextFormat(QtCore.Qt.RichText)
+        map_hint.setStyleSheet("color: #4b5765;")
+        mt_h.addWidget(map_hint)
+        mt_h.addStretch(1)
+        mp_v.addWidget(map_toolbar)
+
+        self.map_view = MapView(self.store)
+        self.map_view.city_clicked.connect(self._on_map_city_clicked)
+        self.map_view.city_right_clicked.connect(self._on_map_city_right_clicked)
+        mp_v.addWidget(self.map_view, 1)
+
+        # Esc shortcut to leave the map page
+        self._sc_exit_map = QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Escape), self.map_page)
+        self._sc_exit_map.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
+        self._sc_exit_map.activated.connect(self._exit_map_view)
+
+        self.right_stack.addWidget(self.map_page)
+        self.right_stack.setCurrentWidget(self.goods_page)
+
+        splitter.addWidget(left); splitter.addWidget(self.right_stack)
         splitter.setStretchFactor(0, 1); splitter.setStretchFactor(1, 5)
-        splitter.setSizes([240, 1100])
+        splitter.setSizes([240, 1080])
         self.setCentralWidget(splitter)
 
     def _build_statusbar(self):
@@ -273,7 +338,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self._refresh_table_for_stop(idx)
         self.setWindowTitle(self._title())
         self._refresh_status()
-        self._sync_map_window()
+        self._sync_map_view()
 
     def _on_stop_internally_changed(self, stop_idx: int):
         if stop_idx == self._current_stop_idx():
@@ -298,32 +363,38 @@ class MainWindow(QtWidgets.QMainWindow):
         self.goods_table.set_context(stop, self.route.excluded_route, city_key, has_wh)
 
     def _update_stop_panel(self, idx: int | None):
+        # Show placeholder when nothing is selected; show goods UI only when a stop is picked
+        has_selection = idx is not None
+        self.goods_placeholder.setVisible(not has_selection)
+        self.info_card.setVisible(has_selection)
+        self.goods_table.setVisible(has_selection)
         if idx is None:
-            self.stop_header.setText("(no stop selected)")
-            self.stop_meta.setText("")
+            self.stop_header.setText("")
+            self.stop_subtitle.setText("")
             return
         stop = self.route.stops[idx]
         cid = stop["trailer"]["city_id"]
         city = self.store.cities_by_id.get(cid)
         if not city:
             self.stop_header.setText(f"city#{cid} (unknown)")
-            self.stop_meta.setText("")
+            self.stop_subtitle.setText("")
             return
         is_start = bool(stop["trailer"]["start_flag"])
-        self.stop_header.setText(f"{idx + 1}. {city['name']}" + (" ★ (start)" if is_start else ""))
-        role = city.get("role") or "—"
+        self.stop_header.setText(
+            f"{idx + 1}. {city['name']}" + ("  ★" if is_start else "")
+        )
         nation = self.store.city_nation(city["key"])
         nation_label = NATION_LABELS.get(nation, nation.capitalize())
+        role = city.get("role")
+        role_label = {"V": "Capital", "G": "Governorate"}.get(role, "Regular")
         wlvl = self.store.city_warehouse_level(city["key"])
-        wh = (f"level {wlvl} ({wlvl * WAREHOUSE_TONS_PER_LEVEL} t)" if wlvl > 0 else "no")
-        prod_ids = city.get("produces", [])
-        prod_names = ", ".join(self.store.goods_by_id[g]["name_en"] for g in prod_ids)
-        self.stop_meta.setText(
-            f"<b>city id:</b> {cid} &nbsp; "
-            f"<b>current nation:</b> {nation_label} &nbsp; "
-            f"<b>role:</b> {role} &nbsp; "
-            f"<b>warehouse:</b> {wh}<br>"
-            f"<b>produces:</b> {prod_names}"
+        if wlvl > 0:
+            wh_label = f"Warehouse Lv{wlvl} ({wlvl * WAREHOUSE_TONS_PER_LEVEL} t)"
+        else:
+            wh_label = "No warehouse"
+        start_label = " · Starting stop" if is_start else ""
+        self.stop_subtitle.setText(
+            f"{nation_label}  ·  {role_label}  ·  {wh_label}{start_label}"
         )
 
     # --- signals from the goods table ----------------------------------
