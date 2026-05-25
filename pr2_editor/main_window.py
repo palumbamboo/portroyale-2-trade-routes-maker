@@ -129,7 +129,6 @@ class MainWindow(QtWidgets.QMainWindow):
         m_edit.addAction("Paste").setShortcut(QtGui.QKeySequence.Paste)
 
         m_tools = mb.addMenu("&Tools")
-        m_tools.addAction("Map view...").triggered.connect(self._on_show_map_view)
         m_tools.addAction("Manage cities (warehouses, nations)...").triggered.connect(self._on_manage_cities)
 
         m_help = mb.addMenu("&Help")
@@ -150,13 +149,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stops_list.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.stops_list.customContextMenuRequested.connect(self._on_stop_context_menu)
         lv.addWidget(self.stops_list, 1)
-        # Hint that the map is the way to add/remove stops
-        hint_lbl = QtWidgets.QLabel(
-            "<i>Use <b>Tools → Map view</b> to add (left-click) or remove "
-            "(right-click) stops. Drag rows above to reorder.</i>")
-        hint_lbl.setTextFormat(QtCore.Qt.RichText)
-        hint_lbl.setWordWrap(True)
-        lv.addWidget(hint_lbl)
+        # "Edit route" button opens the map: it is the only way to add/remove stops
+        btn_edit_route = QtWidgets.QPushButton("Edit route")
+        btn_edit_route.setToolTip(
+            "Open the map view: left-click a city to add a stop, "
+            "right-click a stop to remove it. Drag rows above to reorder.")
+        btn_edit_route.clicked.connect(self._on_show_map_view)
+        lv.addWidget(btn_edit_route)
         lv.addWidget(QtWidgets.QLabel("Global exclusions"))
         self.route_excl_list = QtWidgets.QListWidget()
         self.route_excl_list.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)

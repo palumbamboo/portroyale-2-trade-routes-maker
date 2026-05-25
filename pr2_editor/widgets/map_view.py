@@ -46,6 +46,7 @@ class _CityMarker(QtWidgets.QGraphicsEllipseItem):
         self.setPos(x, y)
         self.city = city
         self.view = view
+        self._visit_orders: list[int] = []
         self.setBrush(QtGui.QBrush(CITY_MARKER_COLOR))
         self.setPen(QtGui.QPen(QtGui.QColor(20, 20, 20), 1.5))
         self.setAcceptHoverEvents(True)
@@ -64,16 +65,27 @@ class _CityMarker(QtWidgets.QGraphicsEllipseItem):
               if wlvl > 0 else "<b>Warehouse:</b> no")
         prod_names = ", ".join(
             store.goods_by_id[g]["name_en"] for g in c.get("produces", []))
+        if self._visit_orders:
+            stops_str = ", ".join(f"#{o}" for o in self._visit_orders)
+            action_hint = (
+                f"<b>In route as stop {stops_str}.</b><br>"
+                "<i>Right-click to remove · left-click to add another visit</i>"
+            )
+        else:
+            action_hint = "<i>Left-click to add this city to the route</i>"
         html = (
             f"<h3 style='margin:0'>{c['name']}</h3>"
             f"<b>Nation:</b> {nation_label} &nbsp; "
             f"<b>Role:</b> {role}<br>"
             f"{wh}<br>"
-            f"<b>Produces:</b> {prod_names or '—'}"
+            f"<b>Produces:</b> {prod_names or '—'}<br>"
+            f"{action_hint}"
         )
         self.setToolTip(html)
 
-    def set_route_state(self, in_route: bool, is_start: bool) -> None:
+    def set_route_state(self, in_route: bool, is_start: bool,
+                        visit_orders: list[int] | None = None) -> None:
+        self._visit_orders = list(visit_orders or [])
         if is_start:
             self.setBrush(QtGui.QBrush(CITY_MARKER_START))
         elif in_route:
@@ -183,11 +195,18 @@ class MapView(QtWidgets.QGraphicsView):
         self._route_items = []
         self._current_route_cids = list(city_ids_in_order)
 
-        # Marker colors
-        in_route = set(city_ids_in_order)
+        # Marker colors + route-position bookkeeping
+        visits: dict[int, list[int]] = {}
+        for order_idx, cid in enumerate(city_ids_in_order, start=1):
+            visits.setdefault(cid, []).append(order_idx)
+        in_route = set(visits.keys())
         first_cid = city_ids_in_order[0] if city_ids_in_order else None
         for cid, marker in self._markers.items():
-            marker.set_route_state(cid in in_route, is_start=(cid == first_cid))
+            marker.set_route_state(
+                cid in in_route,
+                is_start=(cid == first_cid),
+                visit_orders=visits.get(cid, []),
+            )
 
         # Lines connecting stops in order
         for i in range(len(city_ids_in_order) - 1):
@@ -205,25 +224,29 @@ class MapView(QtWidgets.QGraphicsView):
             self._scene.addItem(line)
             self._route_items.append(line)
 
-        # Numbered badges on markers in route
-        for order_idx, cid in enumerate(city_ids_in_order, start=1):
+        # One consolidated badge per city, listing every order index ("1,3" if visited twice)
+        font = QtGui.QFont()
+        font.setBold(True)
+        font.setPointSize(9)
+        for cid, orders in visits.items():
             marker = self._markers.get(cid)
             if marker is None:
                 continue
-            badge = QtWidgets.QGraphicsEllipseItem(-10, -10, 20, 20)
+            label = ",".join(str(o) for o in orders)
+            text = QtWidgets.QGraphicsSimpleTextItem(label)
+            text.setFont(font)
+            br = text.boundingRect()
+            w = max(20.0, br.width() + 10.0)
+            h = 20.0
+            cx = marker.pos().x() + 14
+            cy = marker.pos().y() - 14
+            badge = QtWidgets.QGraphicsEllipseItem(-w / 2, -h / 2, w, h)
             badge.setBrush(QtGui.QBrush(BADGE_BG))
             badge.setPen(QtGui.QPen(BADGE_BORDER, 1.2))
-            badge.setPos(marker.pos().x() + 14, marker.pos().y() - 14)
+            badge.setPos(cx, cy)
             badge.setZValue(15)
             self._scene.addItem(badge)
-            text = QtWidgets.QGraphicsSimpleTextItem(str(order_idx))
-            f = QtGui.QFont()
-            f.setBold(True)
-            f.setPointSize(9)
-            text.setFont(f)
-            br = text.boundingRect()
-            text.setPos(marker.pos().x() + 14 - br.width() / 2,
-                        marker.pos().y() - 14 - br.height() / 2)
+            text.setPos(cx - br.width() / 2, cy - br.height() / 2)
             text.setZValue(16)
             self._scene.addItem(text)
             self._route_items.extend([badge, text])

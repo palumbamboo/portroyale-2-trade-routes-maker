@@ -1,0 +1,242 @@
+{
+  "corpus_christi": [
+    121,
+    214
+  ],
+  "new_orleans": [
+    338,
+    172
+  ],
+  "biloxi": [
+    368,
+    155
+  ],
+  "port_st_joe": [
+    464,
+    184
+  ],
+  "pensacola": [
+    406,
+    157
+  ],
+  "tampa": [
+    543,
+    266
+  ],
+  "florida_keys": [
+    565,
+    377
+  ],
+  "tampico": [
+    63,
+    436
+  ],
+  "veracruz": [
+    104,
+    562
+  ],
+  "villa_hermosa": [
+    205,
+    593
+  ],
+  "campeche": [
+    272,
+    559
+  ],
+  "sisal": [
+    304,
+    499
+  ],
+  "cancun": [
+    397,
+    512
+  ],
+  "belize": [
+    346,
+    633
+  ],
+  "roatan": [
+    401,
+    679
+  ],
+  "charlestown": [
+    638,
+    53
+  ],
+  "fort_caroline": [
+    567,
+    150
+  ],
+  "st_augustine": [
+    569,
+    184
+  ],
+  "gran_bahama": [
+    646,
+    307
+  ],
+  "eleuthera": [
+    697,
+    306
+  ],
+  "nassau": [
+    688,
+    364
+  ],
+  "cat_island": [
+    742,
+    380
+  ],
+  "charles_town": [
+    787,
+    403
+  ],
+  "nombre_de_dios": [
+    480,
+    456
+  ],
+  "evangelista": [
+    526,
+    486
+  ],
+  "havana": [
+    536,
+    435
+  ],
+  "trinidad": [
+    637,
+    489
+  ],
+  "andros": [
+    682,
+    404
+  ],
+  "gibara": [
+    742,
+    512
+  ],
+  "santiago": [
+    748,
+    555
+  ],
+  "tortuga": [
+    841,
+    551
+  ],
+  "port_au_prince": [
+    835,
+    602
+  ],
+  "turk_islands": [
+    853,
+    484
+  ],
+  "isabella": [
+    896,
+    554
+  ],
+  "santo_domingo": [
+    929,
+    606
+  ],
+  "san_juan": [
+    1064,
+    601
+  ],
+  "st_thome": [
+    1098,
+    594
+  ],
+  "st_martin": [
+    1150,
+    599
+  ],
+  "st_kitts": [
+    1163,
+    629
+  ],
+  "antigua": [
+    1195,
+    629
+  ],
+  "guadalupe": [
+    1204,
+    676
+  ],
+  "grenada": [
+    1209,
+    823
+  ],
+  "st_lucia": [
+    1226,
+    784
+  ],
+  "martinica": [
+    1232,
+    755
+  ],
+  "barbados": [
+    1281,
+    778
+  ],
+  "providence": [
+    554,
+    854
+  ],
+  "cayman": [
+    541,
+    564
+  ],
+  "port_royale": [
+    693,
+    638
+  ],
+  "cartagena": [
+    757,
+    921
+  ],
+  "santa_maria": [
+    800,
+    882
+  ],
+  "maracaibo": [
+    875,
+    889
+  ],
+  "gibraltar": [
+    901,
+    954
+  ],
+  "coro": [
+    952,
+    870
+  ],
+  "curacao": [
+    977,
+    837
+  ],
+  "puerto_cabello": [
+    997,
+    896
+  ],
+  "caracas": [
+    1037,
+    890
+  ],
+  "margarita": [
+    1137,
+    868
+  ],
+  "puerto_santo": [
+    1176,
+    881
+  ],
+  "port_of_spain": [
+    1213,
+    876
+  ],
+  "georgetown": [
+    1283,
+    956
+  ]
+}

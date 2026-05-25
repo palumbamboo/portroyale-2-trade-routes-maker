@@ -103,7 +103,7 @@ Features:
 - **💰 buttons** apply the recommended price with Ctrl/Shift modifiers (this good only, both sides, all manual, etc.).
 - **Context menus** on price (Min/Market/Max), on good (copy/paste/reset), on stop (copy/paste/remove).
 - `Ctrl+S` / `Ctrl+Shift+S` to save / save as.
-- **Tools → Map view**: clickable map of the Caribbean. Hover a city to preview name / nation / role / produced goods / warehouse. **Left-click adds the city to the route, right-click removes it** (it's the only way to add/remove stops; the list still lets you drag-drop to reorder). Stops are drawn in order with connecting lines and numbered badges. Requires `pr2_map_coords.json` (see *Map calibration* below).
+- **Edit route** button (below the stops list): opens the map view. Hover a city to preview name / nation / role / produced goods / warehouse. **Left-click adds the city to the route, right-click removes it** (it's the only way to add/remove stops; the list still lets you drag-drop to reorder). Stops are drawn in order with connecting lines and numbered badges. Requires `pr2_map_coords.json` (see *Map calibration* below).
 - **Tools → Manage cities**: edit per-game overrides (warehouse level, current nation, recommended-price overrides per good).
 - **Filter** input above the goods table hides goods that don't match the typed text. **Green dot** prefix on goods produced by the current stop's city.
 

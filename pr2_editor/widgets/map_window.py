@@ -30,12 +30,13 @@ class MapWindow(QtWidgets.QMainWindow):
         a_reset.triggered.connect(self.map_view.reset_zoom)
         tb.addSeparator()
         hint = QtWidgets.QLabel(
-            " <i>Click on a city to add it to the route. Hover to see details. "
-            "Ctrl + scroll = zoom. Drag empty area to pan.</i> ")
+            " <i><b>Left-click</b> a city to add it · <b>right-click</b> a stop to remove it · "
+            "hover for details · Ctrl + scroll = zoom · drag to pan</i> ")
         hint.setTextFormat(QtCore.Qt.RichText)
         tb.addWidget(hint)
 
-        self.statusBar().showMessage("Hover a city for details. Click to add to the current route.")
+        self.statusBar().showMessage(
+            "Left-click a city to add to the route · right-click an existing stop to remove it.")
 
     def set_route(self, city_ids: list[int]) -> None:
         self.map_view.set_route(city_ids)
