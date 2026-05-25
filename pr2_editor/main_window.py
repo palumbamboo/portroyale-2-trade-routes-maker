@@ -11,7 +11,6 @@ from . import APP_NAME, __version__
 from .constants import (
     ACTION_AUTO,
     ACTION_MANUAL,
-    GOOD_SECTIONS,
     NATION_LABELS,
     ROUTES_DIR,
     WAREHOUSE_PRICE,
@@ -54,6 +53,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_show_map_view(self):
         self._sync_map_view()
         self.right_stack.setCurrentWidget(self.map_page)
+        # Fit the map to the available area so the user never has to scroll on open.
+        # Defer to the next event-loop tick so the widget has its post-show geometry.
+        QtCore.QTimer.singleShot(0, self.map_view.fit_to_view)
         self.map_view.setFocus()
 
     def _exit_map_view(self):
@@ -205,14 +207,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.goods_table.copy_good_requested.connect(self._on_copy_good)
         self.goods_table.paste_good_requested.connect(self._on_paste_good)
         self.goods_table.reset_good_requested.connect(self._on_reset_good)
-        self.goods_table.section_action_apply.connect(self._on_section_action_apply)
-        self.goods_table.section_mode_apply.connect(self._on_section_mode_apply)
-        self.goods_table.section_advised_apply.connect(self._on_section_advised_apply)
-        self.goods_table.section_qty_apply.connect(self._on_section_qty_apply)
-        self.goods_table.bulk_action_apply.connect(self._on_bulk_action_apply)
-        self.goods_table.bulk_mode_apply.connect(self._on_bulk_mode_apply)
-        self.goods_table.bulk_advised_apply.connect(self._on_bulk_advised_apply)
-        self.goods_table.bulk_qty_apply.connect(self._on_bulk_qty_apply)
         self._good_clipboard: dict | None = None
         self._stop_clipboard: dict | None = None
         gp_v.addWidget(self.goods_table, 1)
@@ -399,33 +393,63 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # --- signals from the goods table ----------------------------------
 
+    def _propagation_targets(self, good_id: int, *, manual_only: bool, stop: dict | None = None) -> list[int]:
+        """Return the goods the edit should apply to.
+
+        With ≥2 goods selected and the edited row in that selection, the change
+        propagates to all selected goods (manual-only for trade/price changes).
+        Otherwise it stays scoped to the row that was actually touched.
+        """
+        selected = self.goods_table.selected_gids
+        if good_id in selected and len(selected) > 1:
+            targets = sorted(selected)
+        else:
+            targets = [good_id]
+        if manual_only and stop is not None:
+            from .constants import ACTION_MANUAL as _M
+            targets = [g for g in targets if stop["actions"][g] == _M]
+        return targets
+
     def _on_action_changed(self, good_id: int, new_action: int):
         idx = self._current_stop_idx()
         if idx is None:
             return
-        self.route.set_good_action(idx, good_id, new_action)
+        targets = self._propagation_targets(good_id, manual_only=False)
+        for gid in targets:
+            self.route.set_good_action(idx, gid, new_action)
+        if len(targets) > 1:
+            self.statusBar().showMessage(
+                f"Action applied to {len(targets)} selected goods", 2500)
 
     def _on_trade_changed(self, good_id: int, side: str, mode: str, qty: int, price: int):
         idx = self._current_stop_idx()
         if idx is None:
             return
-        self.route.set_good_trade(idx, good_id, side=side, mode=mode, qty=qty, price=price)
+        stop = self.route.stops[idx]
+        targets = self._propagation_targets(good_id, manual_only=True, stop=stop)
+        for gid in targets:
+            self.route.set_good_trade(idx, gid, side=side, mode=mode, qty=qty, price=price)
+        if len(targets) > 1:
+            self.statusBar().showMessage(
+                f"{side.capitalize()} change applied to {len(targets)} selected manual goods", 2500)
 
     def _on_advised_price_requested(self, good_id: int, sides: str, scope: str):
+        """Apply the recommended buy/sell price.
+
+        - Without multi-select: scope = single row (Ctrl click = both sides, else just one).
+        - With ≥2 selected and the clicked row in selection: apply to every selected manual good.
+        """
         idx = self._current_stop_idx()
         if idx is None:
             return
         stop = self.route.stops[idx]
         city_key = self.store.cities_by_id[stop["trailer"]["city_id"]]["key"]
-        if scope == "all":
-            target_gids = [g for g in range(20) if stop["actions"][g] == ACTION_MANUAL]
-        else:
-            if stop["actions"][good_id] != ACTION_MANUAL:
-                return
-            target_gids = [good_id]
+        targets = self._propagation_targets(good_id, manual_only=True, stop=stop)
+        if not targets:
+            return
         sides_to_apply = ["load", "unload"] if sides == "both" else [sides]
         applied, skipped = 0, 0
-        for gid in target_gids:
+        for gid in targets:
             for side in sides_to_apply:
                 price_side = "buy" if side == "load" else "sell"
                 adv = self.store.city_advised_price(city_key, gid, price_side)
@@ -439,154 +463,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.route.set_good_trade(idx, gid, side=side, mode=mode, qty=qty, price=adv)
                 applied += 1
         if applied:
-            scope_lbl = f"all ({len(target_gids)})" if scope == "all" else "1 good"
+            scope_lbl = f"{len(targets)} selected" if len(targets) > 1 else "1 good"
             side_lbl = "load+unload" if sides == "both" else ("load" if sides == "load" else "unload")
             self.statusBar().showMessage(
-                f"Applied recommended price to {scope_lbl}, {side_lbl}: {applied} values updated"
+                f"Recommended price applied to {scope_lbl} ({side_lbl}): {applied} values updated"
                 + (f" ({skipped} with no recommended)" if skipped else ""),
                 4000,
             )
-
-    # --- shared helpers for section / bulk actions ---------------------
-
-    def _apply_action_to_gids(self, idx: int, gids: list[int], action: int) -> int:
-        for gid in gids:
-            self.route.set_good_action(idx, gid, action)
-        return len(gids)
-
-    def _apply_mode_to_gids(self, idx: int, gids: list[int], mode: str) -> int:
-        stop = self.route.stops[idx]
-        applied = 0
-        for gid in gids:
-            if stop["actions"][gid] != ACTION_MANUAL:
-                continue
-            for side in ("load", "unload"):
-                t = stop["trades"][gid]
-                qty = t[f"{side}_qty"]
-                price_raw = t[f"{side}_price"]
-                if mode == "warehouse":
-                    price = 0
-                else:
-                    price = price_raw if price_raw != WAREHOUSE_PRICE else 0
-                self.route.set_good_trade(idx, gid, side=side, mode=mode, qty=qty, price=price)
-                applied += 1
-        return applied
-
-    def _apply_advised_to_gids(self, idx: int, gids: list[int]) -> tuple[int, int]:
-        stop = self.route.stops[idx]
-        city_key = self.store.cities_by_id[stop["trailer"]["city_id"]]["key"]
-        applied, skipped = 0, 0
-        for gid in gids:
-            if stop["actions"][gid] != ACTION_MANUAL:
-                continue
-            for side in ("load", "unload"):
-                price_side = "buy" if side == "load" else "sell"
-                adv = self.store.city_advised_price(city_key, gid, price_side)
-                if adv <= 0:
-                    skipped += 1
-                    continue
-                t = stop["trades"][gid]
-                qty = t[f"{side}_qty"]
-                mode = t[f"{side}_mode"]
-                if mode == "warehouse":
-                    mode = "city"
-                self.route.set_good_trade(idx, gid, side=side, mode=mode, qty=qty, price=adv)
-                applied += 1
-        return applied, skipped
-
-    def _apply_qty_to_gids(self, idx: int, gids: list[int], qty: int) -> int:
-        stop = self.route.stops[idx]
-        applied = 0
-        for gid in gids:
-            if stop["actions"][gid] != ACTION_MANUAL:
-                continue
-            for side in ("load", "unload"):
-                t = stop["trades"][gid]
-                mode = t[f"{side}_mode"]
-                price_raw = t[f"{side}_price"]
-                if mode == "warehouse":
-                    price = 0
-                else:
-                    price = price_raw if price_raw != WAREHOUSE_PRICE else 0
-                self.route.set_good_trade(idx, gid, side=side, mode=mode, qty=qty, price=price)
-                applied += 1
-        return applied
-
-    # --- section commands ----------------------------------------------
-
-    def _on_section_action_apply(self, section_idx: int, action: int):
-        idx = self._current_stop_idx()
-        if idx is None:
-            return
-        title, gids = GOOD_SECTIONS[section_idx]
-        n = self._apply_action_to_gids(idx, gids, action)
-        self.statusBar().showMessage(
-            f"Section '{title}': action applied to {n} goods", 3000)
-
-    def _on_section_mode_apply(self, section_idx: int, mode: str):
-        idx = self._current_stop_idx()
-        if idx is None:
-            return
-        title, gids = GOOD_SECTIONS[section_idx]
-        n = self._apply_mode_to_gids(idx, gids, mode)
-        self.statusBar().showMessage(
-            f"Section '{title}': mode '{mode}' applied to {n} values", 3000)
-
-    def _on_section_advised_apply(self, section_idx: int):
-        idx = self._current_stop_idx()
-        if idx is None:
-            return
-        title, gids = GOOD_SECTIONS[section_idx]
-        applied, skipped = self._apply_advised_to_gids(idx, gids)
-        msg = f"Section '{title}': applied {applied} recommended prices"
-        if skipped:
-            msg += f" ({skipped} with no recommended)"
-        self.statusBar().showMessage(msg, 4000)
-
-    def _on_section_qty_apply(self, section_idx: int, qty: int):
-        idx = self._current_stop_idx()
-        if idx is None:
-            return
-        title, gids = GOOD_SECTIONS[section_idx]
-        applied = self._apply_qty_to_gids(idx, gids, qty)
-        self.statusBar().showMessage(
-            f"Section '{title}': qty={qty} set on {applied} values", 3000)
-
-    # --- bulk (multi-select) commands ----------------------------------
-
-    def _on_bulk_action_apply(self, gids: list, action: int):
-        idx = self._current_stop_idx()
-        if idx is None:
-            return
-        n = self._apply_action_to_gids(idx, list(gids), int(action))
-        self.statusBar().showMessage(
-            f"Selection: action applied to {n} goods", 3000)
-
-    def _on_bulk_mode_apply(self, gids: list, mode: str):
-        idx = self._current_stop_idx()
-        if idx is None:
-            return
-        n = self._apply_mode_to_gids(idx, list(gids), str(mode))
-        self.statusBar().showMessage(
-            f"Selection: mode '{mode}' applied to {n} values", 3000)
-
-    def _on_bulk_advised_apply(self, gids: list):
-        idx = self._current_stop_idx()
-        if idx is None:
-            return
-        applied, skipped = self._apply_advised_to_gids(idx, list(gids))
-        msg = f"Selection: applied {applied} recommended prices"
-        if skipped:
-            msg += f" ({skipped} with no recommended)"
-        self.statusBar().showMessage(msg, 4000)
-
-    def _on_bulk_qty_apply(self, gids: list, qty: int):
-        idx = self._current_stop_idx()
-        if idx is None:
-            return
-        applied = self._apply_qty_to_gids(idx, list(gids), int(qty))
-        self.statusBar().showMessage(
-            f"Selection: qty={qty} set on {applied} values", 3000)
 
     # --- copy/paste ----------------------------------------------------
 

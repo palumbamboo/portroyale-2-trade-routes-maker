@@ -1,4 +1,4 @@
-"""Widget per le celle della GoodsTable: slider per quantità/prezzo + bottone modificatori."""
+"""Widget for the GoodsTable cells: qty/price sliders + modifier-click button."""
 from __future__ import annotations
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -6,12 +6,32 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from ..constants import QTY_MAX
 
 
+class _NoWheelSlider(QtWidgets.QSlider):
+    """QSlider that ignores wheel events so accidental scrolls don't change the value."""
+
+    def wheelEvent(self, ev: QtGui.QWheelEvent) -> None:
+        ev.ignore()
+
+
+class _NoWheelSpinBox(QtWidgets.QSpinBox):
+    """QSpinBox that ignores wheel events."""
+
+    def wheelEvent(self, ev: QtGui.QWheelEvent) -> None:
+        ev.ignore()
+
+
 class _QtyEditSpinBox(QtWidgets.QSpinBox):
-    """QSpinBox che mostra 'MAX' quando il valore vale QTY_MAX (sentinella 0xFFFF)."""
+    """QSpinBox that shows 'MAX' when the value equals QTY_MAX (0xFFFF sentinel).
+
+    Wheel events are ignored to avoid accidental changes while scrolling the table.
+    """
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setRange(0, QTY_MAX)
+
+    def wheelEvent(self, ev: QtGui.QWheelEvent) -> None:
+        ev.ignore()
 
     def textFromValue(self, value: int) -> str:
         if value == QTY_MAX:
@@ -62,7 +82,7 @@ class QtySlider(QtWidgets.QWidget):
         h.setContentsMargins(0, 0, 0, 0)
         h.setSpacing(6)
 
-        self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.slider = _NoWheelSlider(QtCore.Qt.Horizontal)
         self.slider.setRange(0, self.MAX_POSITION)
         self.slider.setSingleStep(50)
         self.slider.setPageStep(200)
@@ -149,13 +169,13 @@ class PriceSlider(QtWidgets.QWidget):
         h.setContentsMargins(0, 0, 0, 0)
         h.setSpacing(6)
 
-        self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.slider = _NoWheelSlider(QtCore.Qt.Horizontal)
         self.slider.setRange(0, 1)
         self.slider.setMinimumWidth(100)
         self.slider.valueChanged.connect(self._on_slider_changed)
         h.addWidget(self.slider, 1)
 
-        self.spin = QtWidgets.QSpinBox()
+        self.spin = _NoWheelSpinBox()
         self.spin.setRange(0, 999_999)
         self.spin.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
         self.spin.setAlignment(QtCore.Qt.AlignRight)

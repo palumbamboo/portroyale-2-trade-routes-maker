@@ -22,7 +22,7 @@ ACTION_MANUAL = 2
 
 ACTION_LABEL = {
     ACTION_AUTO: "Auto",
-    ACTION_EXCLUDED: "Excluded here",
+    ACTION_EXCLUDED: "Excluded",
     ACTION_MANUAL: "Manual",
 }
 MODE_LABEL = {"city": "City", "warehouse": "Warehouse"}

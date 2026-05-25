@@ -34,6 +34,10 @@ APP_STYLESHEET = f"""
     border: 1px solid {NEUTRAL_BORDER};
     border-radius: 4px;
 }}
+#sectionHeader QLabel {{
+    background-color: transparent;
+    color: {TEXT_PRIMARY};
+}}
 
 /* Stop info card at the top of the right panel: noticeable contrast against the window background */
 QFrame#stopInfoCard {{
@@ -44,6 +48,7 @@ QFrame#stopInfoCard {{
 }}
 QFrame#stopInfoCard QLabel {{
     background-color: transparent;
+    color: {TEXT_PRIMARY};
 }}
 
 /* Toolbar row that hosts filter + selection bulk controls */
@@ -51,12 +56,8 @@ QFrame#tableToolbar {{
     background-color: transparent;
     border: none;
 }}
-
-/* Inline bulk-action popover inside the toolbar */
-QFrame#bulkInline {{
-    background-color: #eef5ff;
-    border: 1px solid #c7ddf5;
-    border-radius: 4px;
+QFrame#tableToolbar QLabel {{
+    color: {TEXT_PRIMARY};
 }}
 
 /* Accent (primary action) button: opt-in via setProperty('accent', True) */
