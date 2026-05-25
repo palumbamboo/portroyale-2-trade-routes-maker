@@ -98,13 +98,19 @@ class _CityMarker(QtWidgets.QGraphicsEllipseItem):
             self.view.city_clicked.emit(int(self.city["id"]))
             ev.accept()
             return
+        if ev.button() == QtCore.Qt.RightButton:
+            global_pos = ev.screenPos().toPoint() if hasattr(ev.screenPos(), "toPoint") else ev.screenPos()
+            self.view.city_right_clicked.emit(int(self.city["id"]), global_pos)
+            ev.accept()
+            return
         super().mousePressEvent(ev)
 
 
 class MapView(QtWidgets.QGraphicsView):
     """QGraphicsView showing the map, city markers, hover tooltip, and route lines."""
 
-    city_clicked = QtCore.Signal(int)  # city_id
+    city_clicked = QtCore.Signal(int)        # city_id (left-click)
+    city_right_clicked = QtCore.Signal(int, QtCore.QPoint)  # city_id, global screen pos
 
     def __init__(self, store: Store, parent=None):
         super().__init__(parent)

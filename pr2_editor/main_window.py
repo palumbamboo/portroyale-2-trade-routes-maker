@@ -20,7 +20,6 @@ from .constants import (
 from .icons import good_icon
 from .route import Route
 from .store import Store
-from .widgets.add_stop_dialog import AddStopDialog
 from .widgets.goods_table import GoodsTable
 from .widgets.manage_cities_dialog import ManageCitiesDialog
 from .widgets.map_window import MapWindow
@@ -59,6 +58,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if self._map_window is None:
             self._map_window = MapWindow(self.store, parent=self)
             self._map_window.city_clicked.connect(self._on_map_city_clicked)
+            self._map_window.city_right_clicked.connect(self._on_map_city_right_clicked)
             self._map_window.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
         self._sync_map_window()
         self._map_window.show()
@@ -78,6 +78,30 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._map_window or self, "Error", str(e))
             return
         self.stops_list.setCurrentRow(idx)
+
+    def _on_map_city_right_clicked(self, city_id: int, global_pos: QtCore.QPoint):
+        """Right-click on a map city: if it's in the route, offer to remove its stop(s)."""
+        city = self.store.cities_by_id.get(int(city_id))
+        name = city["name"] if city else f"city#{city_id}"
+        # Find every stop matching this city (a city can appear more than once in a route)
+        matches = [i for i, s in enumerate(self.route.stops)
+                   if int(s["trailer"]["city_id"]) == int(city_id)]
+        if not matches:
+            return  # nothing to remove for this city
+        menu = QtWidgets.QMenu(self._map_window or self)
+        actions: list[tuple[QtGui.QAction, int]] = []
+        if len(matches) == 1:
+            a = menu.addAction(f"Remove stop '{name}'")
+            actions.append((a, matches[0]))
+        else:
+            for i in matches:
+                a = menu.addAction(f"Remove stop {i + 1}: '{name}'")
+                actions.append((a, i))
+        chosen = menu.exec(global_pos)
+        for a, i in actions:
+            if chosen is a:
+                self.route.remove_stop(i)
+                return
 
     def _wire_route(self):
         self.route.changed.connect(self._on_route_changed)
@@ -126,11 +150,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stops_list.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.stops_list.customContextMenuRequested.connect(self._on_stop_context_menu)
         lv.addWidget(self.stops_list, 1)
-        h = QtWidgets.QHBoxLayout()
-        b_add = QtWidgets.QPushButton("+ Stop"); b_add.clicked.connect(self._on_add_stop)
-        b_rem = QtWidgets.QPushButton("− Remove"); b_rem.clicked.connect(self._on_remove_stop)
-        h.addWidget(b_add); h.addWidget(b_rem)
-        lv.addLayout(h)
+        # Hint that the map is the way to add/remove stops
+        hint_lbl = QtWidgets.QLabel(
+            "<i>Use <b>Tools → Map view</b> to add (left-click) or remove "
+            "(right-click) stops. Drag rows above to reorder.</i>")
+        hint_lbl.setTextFormat(QtCore.Qt.RichText)
+        hint_lbl.setWordWrap(True)
+        lv.addWidget(hint_lbl)
         lv.addWidget(QtWidgets.QLabel("Global exclusions"))
         self.route_excl_list = QtWidgets.QListWidget()
         self.route_excl_list.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
@@ -547,15 +573,11 @@ class MainWindow(QtWidgets.QMainWindow):
         menu = QtWidgets.QMenu(self)
         a_copy = menu.addAction(f"Copy entire stop '{name}'")
         a_paste = menu.addAction(f"Paste config onto '{name}'")
-        menu.addSeparator()
-        a_rem = menu.addAction(f"Remove stop '{name}'")
         chosen = menu.exec(self.stops_list.viewport().mapToGlobal(pos))
         if chosen == a_copy:
             self._copy_stop(row)
         elif chosen == a_paste:
             self._paste_stop(row)
-        elif chosen == a_rem:
-            self.route.remove_stop(row)
 
     def _copy_stop(self, idx: int):
         stop = self.route.stops[idx]
@@ -674,26 +696,6 @@ class MainWindow(QtWidgets.QMainWindow):
             return False
         self._on_route_changed()
         return True
-
-    def _on_add_stop(self):
-        if len(self.route.stops) >= ahr.MAX_STOPS:
-            QtWidgets.QMessageBox.warning(self, "Add stop", f"Maximum {ahr.MAX_STOPS} stops per route.")
-            return
-        dlg = AddStopDialog(self.store, self)
-        if dlg.exec() != QtWidgets.QDialog.Accepted or dlg.selected_city_id is None:
-            return
-        try:
-            idx = self.route.add_stop(dlg.selected_city_id)
-        except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Error", str(e))
-            return
-        self.stops_list.setCurrentRow(idx)
-
-    def _on_remove_stop(self):
-        idx = self.stops_list.currentRow()
-        if idx < 0:
-            return
-        self.route.remove_stop(idx)
 
     def _on_manage_cities(self):
         dlg = ManageCitiesDialog(self.store, self)

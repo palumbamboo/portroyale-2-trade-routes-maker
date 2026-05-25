@@ -10,7 +10,8 @@ from .map_view import MapView
 class MapWindow(QtWidgets.QMainWindow):
     """Top-level window with the map; emits city_clicked when a city is clicked."""
 
-    city_clicked = QtCore.Signal(int)  # forwarded from MapView
+    city_clicked = QtCore.Signal(int)                       # left-click
+    city_right_clicked = QtCore.Signal(int, QtCore.QPoint)  # right-click + global pos
 
     def __init__(self, store: Store, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
@@ -19,6 +20,7 @@ class MapWindow(QtWidgets.QMainWindow):
 
         self.map_view = MapView(store)
         self.map_view.city_clicked.connect(self.city_clicked)
+        self.map_view.city_right_clicked.connect(self.city_right_clicked)
         self.setCentralWidget(self.map_view)
 
         tb = self.addToolBar("Map")
