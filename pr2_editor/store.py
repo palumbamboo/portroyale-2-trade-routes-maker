@@ -1,4 +1,4 @@
-"""Store: config statico + user_state (override di partita) con persistenza su disco."""
+"""Store: static config + user_state (per-game overrides) persisted to disk."""
 from __future__ import annotations
 import json
 from pathlib import Path
@@ -22,7 +22,7 @@ class Store(QtCore.QObject):
         self._config_path = Path(config_path) if config_path else CONFIG_PATH
         self._user_state_path = Path(user_state_path) if user_state_path else USER_STATE_PATH
         if not self._config_path.exists():
-            raise FileNotFoundError(f"pr2_config.json non trovato in {self._config_path}")
+            raise FileNotFoundError(f"pr2_config.json not found at {self._config_path}")
         self.config = json.loads(self._config_path.read_text(encoding="utf-8"))
         assert len(self.config["goods"]) == 20
         assert len(self.config["cities"]) == 60

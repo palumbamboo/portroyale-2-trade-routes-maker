@@ -1,20 +1,20 @@
-"""Dialog "Gestisci città": modifica override di partita (magazzino, nazione, prezzi)."""
+"""Manage cities dialog: edit per-game overrides (warehouse, nation, prices)."""
 from __future__ import annotations
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from ..constants import NATIONS_AVAILABLE, WAREHOUSE_TONS_PER_LEVEL
+from ..constants import NATION_LABELS, NATIONS_AVAILABLE, WAREHOUSE_TONS_PER_LEVEL
 from ..icons import good_icon
 from ..store import Store
 
 
 class ManageCitiesDialog(QtWidgets.QDialog):
-    """Modifica per partita corrente: magazzini, nazioni, override prezzi consigliati."""
+    """Edit overrides for the current game: warehouses, nations, recommended price overrides."""
 
     def __init__(self, store: Store, parent=None):
         super().__init__(parent)
         self.store = store
-        self.setWindowTitle("Gestisci città — magazzini, nazioni, prezzi")
+        self.setWindowTitle("Manage cities — warehouses, nations, prices")
         self.resize(1180, 740)
         self._current_city_key: str | None = None
         self._suppress = False
@@ -26,41 +26,41 @@ class ManageCitiesDialog(QtWidgets.QDialog):
         outer = QtWidgets.QVBoxLayout(self)
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
 
-        # --- sinistra: filtri + lista citta ---
+        # --- left: filters + city list ---
         left = QtWidgets.QWidget()
         lv = QtWidgets.QVBoxLayout(left)
         lv.setContentsMargins(0, 0, 0, 0)
 
         row = QtWidgets.QHBoxLayout()
-        row.addWidget(QtWidgets.QLabel("Cerca:"))
+        row.addWidget(QtWidgets.QLabel("Search:"))
         self.ed_search = QtWidgets.QLineEdit()
-        self.ed_search.setPlaceholderText("nome città...")
+        self.ed_search.setPlaceholderText("city name...")
         self.ed_search.textChanged.connect(self._refresh_filter)
         row.addWidget(self.ed_search, 1)
         lv.addLayout(row)
 
         row = QtWidgets.QHBoxLayout()
-        row.addWidget(QtWidgets.QLabel("Nazione:"))
+        row.addWidget(QtWidgets.QLabel("Nation:"))
         self.cb_nation_filter = QtWidgets.QComboBox()
-        self.cb_nation_filter.addItem("(tutte)", None)
+        self.cb_nation_filter.addItem("(all)", None)
         for n in NATIONS_AVAILABLE:
-            self.cb_nation_filter.addItem(n, n)
+            self.cb_nation_filter.addItem(NATION_LABELS.get(n, n.capitalize()), n)
         self.cb_nation_filter.currentIndexChanged.connect(self._refresh_filter)
         row.addWidget(self.cb_nation_filter, 1)
         lv.addLayout(row)
 
         row = QtWidgets.QHBoxLayout()
-        row.addWidget(QtWidgets.QLabel("Ruolo:"))
+        row.addWidget(QtWidgets.QLabel("Role:"))
         self.cb_role_filter = QtWidgets.QComboBox()
-        self.cb_role_filter.addItem("(tutti)", None)
-        self.cb_role_filter.addItem("V (vicerè/capitale)", "V")
-        self.cb_role_filter.addItem("G (governatorato)", "G")
-        self.cb_role_filter.addItem("normale", "_NONE")
+        self.cb_role_filter.addItem("(all)", None)
+        self.cb_role_filter.addItem("V (viceroy/capital)", "V")
+        self.cb_role_filter.addItem("G (governorate)", "G")
+        self.cb_role_filter.addItem("regular", "_NONE")
         self.cb_role_filter.currentIndexChanged.connect(self._refresh_filter)
         row.addWidget(self.cb_role_filter, 1)
         lv.addLayout(row)
 
-        self.cb_only_overrides = QtWidgets.QCheckBox("Solo città con override")
+        self.cb_only_overrides = QtWidgets.QCheckBox("Only cities with overrides")
         self.cb_only_overrides.toggled.connect(self._refresh_filter)
         lv.addWidget(self.cb_only_overrides)
 
@@ -70,12 +70,12 @@ class ManageCitiesDialog(QtWidgets.QDialog):
 
         self._populate_list()
 
-        # --- destra: form citta selezionata ---
+        # --- right: selected city form ---
         right = QtWidgets.QWidget()
         rv = QtWidgets.QVBoxLayout(right)
         rv.setContentsMargins(8, 0, 0, 0)
 
-        self.header_label = QtWidgets.QLabel("(seleziona una città)")
+        self.header_label = QtWidgets.QLabel("(select a city)")
         self.header_label.setStyleSheet("font-size:14pt; font-weight:bold;")
         rv.addWidget(self.header_label)
         self.meta_label = QtWidgets.QLabel("")
@@ -85,31 +85,31 @@ class ManageCitiesDialog(QtWidgets.QDialog):
 
         sep = QtWidgets.QFrame(); sep.setFrameShape(QtWidgets.QFrame.HLine); rv.addWidget(sep)
 
-        form_box = QtWidgets.QGroupBox("Stato corrente")
+        form_box = QtWidgets.QGroupBox("Current state")
         fl = QtWidgets.QGridLayout(form_box)
-        fl.addWidget(QtWidgets.QLabel("Livello magazzino:"), 0, 0)
+        fl.addWidget(QtWidgets.QLabel("Warehouse level:"), 0, 0)
         self.sp_warehouse = QtWidgets.QSpinBox()
         self.sp_warehouse.setRange(0, 99)
-        self.sp_warehouse.setSpecialValueText("0 (nessuno)")
+        self.sp_warehouse.setSpecialValueText("0 (none)")
         self.sp_warehouse.valueChanged.connect(self._on_warehouse_changed)
         fl.addWidget(self.sp_warehouse, 0, 1)
         self.lbl_warehouse_capacity = QtWidgets.QLabel("0 t")
         fl.addWidget(self.lbl_warehouse_capacity, 0, 2)
-        self.btn_warehouse_reset = QtWidgets.QPushButton("Resetta")
-        self.btn_warehouse_reset.setToolTip("Imposta livello a 0 (nessun magazzino)")
+        self.btn_warehouse_reset = QtWidgets.QPushButton("Reset")
+        self.btn_warehouse_reset.setToolTip("Set level to 0 (no warehouse)")
         self.btn_warehouse_reset.clicked.connect(lambda: self.sp_warehouse.setValue(0))
         fl.addWidget(self.btn_warehouse_reset, 0, 3)
 
-        fl.addWidget(QtWidgets.QLabel("Nazione corrente:"), 1, 0)
+        fl.addWidget(QtWidgets.QLabel("Current nation:"), 1, 0)
         self.cb_nation = QtWidgets.QComboBox()
         for n in NATIONS_AVAILABLE:
-            self.cb_nation.addItem(n, n)
+            self.cb_nation.addItem(NATION_LABELS.get(n, n.capitalize()), n)
         self.cb_nation.currentIndexChanged.connect(self._on_nation_changed)
         fl.addWidget(self.cb_nation, 1, 1)
         self.lbl_nation_default = QtWidgets.QLabel("")
         fl.addWidget(self.lbl_nation_default, 1, 2)
-        self.btn_nation_reset = QtWidgets.QPushButton("Resetta")
-        self.btn_nation_reset.setToolTip("Ripristina la nazione di default")
+        self.btn_nation_reset = QtWidgets.QPushButton("Reset")
+        self.btn_nation_reset.setToolTip("Restore default nation")
         self.btn_nation_reset.clicked.connect(self._reset_nation)
         fl.addWidget(self.btn_nation_reset, 1, 3)
         fl.setColumnStretch(1, 1)
@@ -117,11 +117,11 @@ class ManageCitiesDialog(QtWidgets.QDialog):
 
         rv.addWidget(form_box)
 
-        box_prices = QtWidgets.QGroupBox("Override prezzi consigliati per merce (vuoto = usa default globale)")
+        box_prices = QtWidgets.QGroupBox("Recommended price overrides per good (empty = use global default)")
         bp = QtWidgets.QVBoxLayout(box_prices)
         self.prices_table = QtWidgets.QTableWidget(20, 6)
         self.prices_table.setHorizontalHeaderLabels(
-            ["Merce", "Buy default", "Buy override", "Sell default", "Sell override", ""]
+            ["Good", "Buy default", "Buy override", "Sell default", "Sell override", ""]
         )
         self.prices_table.verticalHeader().setVisible(False)
         self.prices_table.setAlternatingRowColors(True)
@@ -143,7 +143,7 @@ class ManageCitiesDialog(QtWidgets.QDialog):
         self._price_sell_widgets: list[QtWidgets.QSpinBox] = []
 
         for gid, g in enumerate(self.store.config["goods"]):
-            it_name = QtWidgets.QTableWidgetItem(good_icon(gid), g["name_it"])
+            it_name = QtWidgets.QTableWidgetItem(good_icon(gid), g["name_en"])
             it_name.setFlags(it_name.flags() & ~QtCore.Qt.ItemIsEditable)
             self.prices_table.setItem(gid, 0, it_name)
 
@@ -183,7 +183,7 @@ class ManageCitiesDialog(QtWidgets.QDialog):
 
             btn_reset = QtWidgets.QToolButton()
             btn_reset.setText("⟲")
-            btn_reset.setToolTip(f"Resetta override per '{g['name_it']}' a default")
+            btn_reset.setToolTip(f"Reset override for '{g['name_en']}' to default")
             btn_reset.clicked.connect(lambda _, gid=gid: self._reset_prices_for_good(gid))
             self.prices_table.setCellWidget(gid, 5, btn_reset)
 
@@ -191,7 +191,7 @@ class ManageCitiesDialog(QtWidgets.QDialog):
         bp.addWidget(self.prices_table)
 
         bb_prices = QtWidgets.QHBoxLayout()
-        self.btn_reset_all_prices = QtWidgets.QPushButton("Resetta tutti i prezzi a default")
+        self.btn_reset_all_prices = QtWidgets.QPushButton("Reset all prices to default")
         self.btn_reset_all_prices.clicked.connect(self._reset_all_prices)
         bb_prices.addWidget(self.btn_reset_all_prices)
         bb_prices.addStretch(1)
@@ -213,7 +213,7 @@ class ManageCitiesDialog(QtWidgets.QDialog):
         self._set_form_enabled(False)
         self._refresh_filter()
 
-    # --- popola lista ---------------------------------------------------
+    # --- list population ----------------------------------------------
 
     def _populate_list(self):
         self.lst.clear()
@@ -228,18 +228,19 @@ class ManageCitiesDialog(QtWidgets.QDialog):
         ov = self.store.user_state["city_overrides"].get(ckey, {})
         wl = self.store.city_warehouse_level(ckey)
         nation = self.store.city_nation(ckey)
+        nation_label = NATION_LABELS.get(nation, nation.capitalize())
         badges: list[str] = []
         if c.get("role"):
             badges.append(c["role"])
         if wl > 0:
-            badges.append(f"M{wl}")
+            badges.append(f"W{wl}")
         if "nation" in ov:
-            badges.append(f"→{nation}")
+            badges.append(f"→{nation_label}")
         n_p = len(ov.get("advised_prices", {}))
         if n_p:
             badges.append(f"P{n_p}")
         badge_str = (" [" + ",".join(badges) + "]") if badges else ""
-        it.setText(f"{c['id']:>3}  {c['name']}  ·  {nation}{badge_str}")
+        it.setText(f"{c['id']:>3}  {c['name']}  ·  {nation_label}{badge_str}")
         font = it.font()
         font.setBold(bool(ov))
         it.setFont(font)
@@ -266,13 +267,13 @@ class ManageCitiesDialog(QtWidgets.QDialog):
             ok_ov = (not only_ov) or bool(overrides.get(ckey))
             it.setHidden(not (ok_name and ok_nation and ok_role and ok_ov))
 
-    # --- selezione + form -----------------------------------------------
+    # --- selection + form ---------------------------------------------
 
     def _on_city_selected(self, current, _previous):
         if current is None:
             self._current_city_key = None
             self._set_form_enabled(False)
-            self.header_label.setText("(seleziona una città)")
+            self.header_label.setText("(select a city)")
             self.meta_label.setText("")
             return
         ckey = current.data(QtCore.Qt.UserRole)
@@ -293,12 +294,13 @@ class ManageCitiesDialog(QtWidgets.QDialog):
             self.header_label.setText(f"{city['name']} (id {city['id']})")
             role = city.get("role") or "—"
             default_nation = city["nation"]
+            default_nation_label = NATION_LABELS.get(default_nation, default_nation.capitalize())
             produces = ", ".join(
-                self.store.goods_by_id[g]["name_it"] for g in city.get("produces", []))
+                self.store.goods_by_id[g]["name_en"] for g in city.get("produces", []))
             self.meta_label.setText(
-                f"<b>nazione default:</b> {default_nation} &nbsp; "
-                f"<b>ruolo:</b> {role}<br>"
-                f"<b>produce:</b> {produces or '—'}"
+                f"<b>default nation:</b> {default_nation_label} &nbsp; "
+                f"<b>role:</b> {role}<br>"
+                f"<b>produces:</b> {produces or '—'}"
             )
 
             wl = self.store.city_warehouse_level(ckey)
@@ -308,10 +310,10 @@ class ManageCitiesDialog(QtWidgets.QDialog):
             cur_nation = self.store.city_nation(ckey)
             idx = self.cb_nation.findData(cur_nation)
             if idx < 0:
-                self.cb_nation.addItem(cur_nation, cur_nation)
+                self.cb_nation.addItem(NATION_LABELS.get(cur_nation, cur_nation.capitalize()), cur_nation)
                 idx = self.cb_nation.findData(cur_nation)
             self.cb_nation.setCurrentIndex(idx)
-            self.lbl_nation_default.setText(f"(default: {default_nation})")
+            self.lbl_nation_default.setText(f"(default: {default_nation_label})")
 
             ov = self.store.user_state["city_overrides"].get(ckey, {}).get("advised_prices", {})
             for gid in range(20):
@@ -323,7 +325,7 @@ class ManageCitiesDialog(QtWidgets.QDialog):
         finally:
             self._suppress = False
 
-    # --- handlers -------------------------------------------------------
+    # --- handlers -----------------------------------------------------
 
     def _on_warehouse_changed(self, value: int):
         if self._suppress or not self._current_city_key:

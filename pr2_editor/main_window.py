@@ -1,4 +1,4 @@
-"""MainWindow: finestra principale dell'editor."""
+"""MainWindow: main editor window."""
 from __future__ import annotations
 import copy
 from pathlib import Path
@@ -12,8 +12,10 @@ from .constants import (
     ACTION_AUTO,
     ACTION_MANUAL,
     GOOD_SECTIONS,
+    NATION_LABELS,
     ROUTES_DIR,
     WAREHOUSE_PRICE,
+    WAREHOUSE_TONS_PER_LEVEL,
 )
 from .icons import good_icon
 from .route import Route
@@ -54,33 +56,33 @@ class MainWindow(QtWidgets.QMainWindow):
         mb = self.menuBar()
         m_file = mb.addMenu("&File")
         for label, key, slot in [
-            ("Nuova rotta", QtGui.QKeySequence.New, self._on_new_route),
-            ("Apri rotta...", QtGui.QKeySequence.Open, self._on_open_route),
+            ("New route", QtGui.QKeySequence.New, self._on_new_route),
+            ("Open route...", QtGui.QKeySequence.Open, self._on_open_route),
         ]:
             a = m_file.addAction(label); a.setShortcut(key); a.triggered.connect(slot)
         m_file.addSeparator()
-        a = m_file.addAction("Salva"); a.setShortcut(QtGui.QKeySequence.Save); a.triggered.connect(self._on_save_route)
-        a = m_file.addAction("Salva con nome..."); a.setShortcut(QtGui.QKeySequence.SaveAs); a.triggered.connect(self._on_save_route_as)
+        a = m_file.addAction("Save"); a.setShortcut(QtGui.QKeySequence.Save); a.triggered.connect(self._on_save_route)
+        a = m_file.addAction("Save as..."); a.setShortcut(QtGui.QKeySequence.SaveAs); a.triggered.connect(self._on_save_route_as)
         m_file.addSeparator()
-        a = m_file.addAction("Esci"); a.setShortcut(QtGui.QKeySequence.Quit); a.triggered.connect(self.close)
+        a = m_file.addAction("Quit"); a.setShortcut(QtGui.QKeySequence.Quit); a.triggered.connect(self.close)
 
-        m_edit = mb.addMenu("&Modifica")
-        m_edit.addAction("Copia").setShortcut(QtGui.QKeySequence.Copy)
-        m_edit.addAction("Incolla").setShortcut(QtGui.QKeySequence.Paste)
+        m_edit = mb.addMenu("&Edit")
+        m_edit.addAction("Copy").setShortcut(QtGui.QKeySequence.Copy)
+        m_edit.addAction("Paste").setShortcut(QtGui.QKeySequence.Paste)
 
-        m_tools = mb.addMenu("&Strumenti")
-        m_tools.addAction("Gestisci città (magazzini, nazioni)...").triggered.connect(self._on_manage_cities)
+        m_tools = mb.addMenu("&Tools")
+        m_tools.addAction("Manage cities (warehouses, nations)...").triggered.connect(self._on_manage_cities)
 
-        m_help = mb.addMenu("&Aiuto")
-        m_help.addAction("Informazioni").triggered.connect(self._on_about)
+        m_help = mb.addMenu("&Help")
+        m_help.addAction("About").triggered.connect(self._on_about)
 
     def _build_central(self):
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
 
-        # --- sinistra: stop + esclusioni --------------
+        # --- left: stops + exclusions --------------
         left = QtWidgets.QWidget()
         lv = QtWidgets.QVBoxLayout(left)
-        lv.addWidget(QtWidgets.QLabel("Stop della rotta"))
+        lv.addWidget(QtWidgets.QLabel("Route stops"))
         self.stops_list = QtWidgets.QListWidget()
         self.stops_list.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
         self.stops_list.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
@@ -90,15 +92,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stops_list.customContextMenuRequested.connect(self._on_stop_context_menu)
         lv.addWidget(self.stops_list, 1)
         h = QtWidgets.QHBoxLayout()
-        b_add = QtWidgets.QPushButton("+ Tappa"); b_add.clicked.connect(self._on_add_stop)
-        b_rem = QtWidgets.QPushButton("− Rimuovi"); b_rem.clicked.connect(self._on_remove_stop)
+        b_add = QtWidgets.QPushButton("+ Stop"); b_add.clicked.connect(self._on_add_stop)
+        b_rem = QtWidgets.QPushButton("− Remove"); b_rem.clicked.connect(self._on_remove_stop)
         h.addWidget(b_add); h.addWidget(b_rem)
         lv.addLayout(h)
-        lv.addWidget(QtWidgets.QLabel("Esclusioni globali"))
+        lv.addWidget(QtWidgets.QLabel("Global exclusions"))
         self.route_excl_list = QtWidgets.QListWidget()
         self.route_excl_list.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
         for g in self.store.config["goods"]:
-            it = QtWidgets.QListWidgetItem(good_icon(g["id"]), g["name_it"])
+            it = QtWidgets.QListWidgetItem(good_icon(g["id"]), g["name_en"])
             it.setFlags(it.flags() | QtCore.Qt.ItemIsUserCheckable)
             it.setCheckState(QtCore.Qt.Unchecked)
             it.setData(QtCore.Qt.UserRole, g["id"])
@@ -106,10 +108,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.route_excl_list.itemChanged.connect(self._on_route_excl_changed)
         lv.addWidget(self.route_excl_list, 1)
 
-        # --- destra: header citta + tabella merci ----------
+        # --- right: city header + goods table ----------
         right = QtWidgets.QWidget()
         rv = QtWidgets.QVBoxLayout(right)
-        self.stop_header = QtWidgets.QLabel("(nessuno stop selezionato)")
+        self.stop_header = QtWidgets.QLabel("(no stop selected)")
         self.stop_header.setStyleSheet("font-size:14pt; font-weight:bold;")
         rv.addWidget(self.stop_header)
         self.stop_meta = QtWidgets.QLabel("")
@@ -118,11 +120,11 @@ class MainWindow(QtWidgets.QMainWindow):
         rv.addWidget(self.stop_meta)
         sep = QtWidgets.QFrame(); sep.setFrameShape(QtWidgets.QFrame.HLine); rv.addWidget(sep)
         hint = QtWidgets.QLabel(
-            "<i>💰 prezzo consigliato &nbsp;•&nbsp; "
-            "Click: solo questa merce+lato &nbsp;•&nbsp; "
-            "Ctrl+Click: carica+scarica &nbsp;•&nbsp; "
-            "Shift+Click: tutte le manuali &nbsp;•&nbsp; "
-            "click destro sul prezzo: scelta Min/Mercato/Max</i>"
+            "<i>💰 recommended price &nbsp;•&nbsp; "
+            "Click: only this good+side &nbsp;•&nbsp; "
+            "Ctrl+Click: load+unload &nbsp;•&nbsp; "
+            "Shift+Click: every manual good &nbsp;•&nbsp; "
+            "right-click on price: choose Min/Market/Max</i>"
         )
         hint.setTextFormat(QtCore.Qt.RichText)
         hint.setWordWrap(True)
@@ -138,6 +140,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.goods_table.section_mode_apply.connect(self._on_section_mode_apply)
         self.goods_table.section_advised_apply.connect(self._on_section_advised_apply)
         self.goods_table.section_qty_apply.connect(self._on_section_qty_apply)
+        self.goods_table.bulk_action_apply.connect(self._on_bulk_action_apply)
+        self.goods_table.bulk_mode_apply.connect(self._on_bulk_mode_apply)
+        self.goods_table.bulk_advised_apply.connect(self._on_bulk_advised_apply)
+        self.goods_table.bulk_qty_apply.connect(self._on_bulk_qty_apply)
         self._good_clipboard: dict | None = None
         self._stop_clipboard: dict | None = None
         rv.addWidget(self.goods_table, 1)
@@ -156,8 +162,8 @@ class MainWindow(QtWidgets.QMainWindow):
         n = len(self.route.stops)
         excl = len(self.route.excluded_route)
         self.statusBar().showMessage(
-            f"{self.route.display_name()} • {n}/{ahr.MAX_STOPS} stop • "
-            f"{excl} merci escluse • user_state: {ovs} override"
+            f"{self.route.display_name()} • {n}/{ahr.MAX_STOPS} stops • "
+            f"{excl} goods excluded • user state: {ovs} overrides"
         )
 
     # --- helpers --------------------------------------------------------
@@ -168,7 +174,7 @@ class MainWindow(QtWidgets.QMainWindow):
             return i
         return None
 
-    # --- aggiornamenti UI ----------------------------------------------
+    # --- UI updates ----------------------------------------------------
 
     def _on_route_changed(self):
         sel_idx = self.stops_list.currentRow()
@@ -218,6 +224,7 @@ class MainWindow(QtWidgets.QMainWindow):
         idx = self._current_stop_idx()
         self._update_stop_panel(idx)
         self._refresh_table_for_stop(idx)
+        self.goods_table.clear_selection()
 
     def _refresh_table_for_stop(self, idx: int | None):
         if idx is None:
@@ -231,33 +238,34 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _update_stop_panel(self, idx: int | None):
         if idx is None:
-            self.stop_header.setText("(nessuno stop selezionato)")
+            self.stop_header.setText("(no stop selected)")
             self.stop_meta.setText("")
             return
         stop = self.route.stops[idx]
         cid = stop["trailer"]["city_id"]
         city = self.store.cities_by_id.get(cid)
         if not city:
-            self.stop_header.setText(f"city#{cid} (sconosciuta)")
+            self.stop_header.setText(f"city#{cid} (unknown)")
             self.stop_meta.setText("")
             return
         is_start = bool(stop["trailer"]["start_flag"])
-        self.stop_header.setText(f"{idx + 1}. {city['name']}" + (" ★ (partenza)" if is_start else ""))
+        self.stop_header.setText(f"{idx + 1}. {city['name']}" + (" ★ (start)" if is_start else ""))
         role = city.get("role") or "—"
         nation = self.store.city_nation(city["key"])
+        nation_label = NATION_LABELS.get(nation, nation.capitalize())
         wlvl = self.store.city_warehouse_level(city["key"])
-        wh = (f"livello {wlvl} ({wlvl * 800} t)" if wlvl > 0 else "no")
+        wh = (f"level {wlvl} ({wlvl * WAREHOUSE_TONS_PER_LEVEL} t)" if wlvl > 0 else "no")
         prod_ids = city.get("produces", [])
-        prod_names = ", ".join(self.store.goods_by_id[g]["name_it"] for g in prod_ids)
+        prod_names = ", ".join(self.store.goods_by_id[g]["name_en"] for g in prod_ids)
         self.stop_meta.setText(
-            f"<b>id città:</b> {cid} &nbsp; "
-            f"<b>nazione corrente:</b> {nation} &nbsp; "
-            f"<b>ruolo:</b> {role} &nbsp; "
-            f"<b>magazzino:</b> {wh}<br>"
-            f"<b>produce:</b> {prod_names}"
+            f"<b>city id:</b> {cid} &nbsp; "
+            f"<b>current nation:</b> {nation_label} &nbsp; "
+            f"<b>role:</b> {role} &nbsp; "
+            f"<b>warehouse:</b> {wh}<br>"
+            f"<b>produces:</b> {prod_names}"
         )
 
-    # --- segnali dalla tabella verso Route ------------------------------
+    # --- signals from the goods table ----------------------------------
 
     def _on_action_changed(self, good_id: int, new_action: int):
         idx = self._current_stop_idx()
@@ -299,31 +307,22 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.route.set_good_trade(idx, gid, side=side, mode=mode, qty=qty, price=adv)
                 applied += 1
         if applied:
-            scope_lbl = f"tutte ({len(target_gids)})" if scope == "all" else "1 merce"
-            side_lbl = "carico+scarico" if sides == "both" else ("carico" if sides == "load" else "scarico")
+            scope_lbl = f"all ({len(target_gids)})" if scope == "all" else "1 good"
+            side_lbl = "load+unload" if sides == "both" else ("load" if sides == "load" else "unload")
             self.statusBar().showMessage(
-                f"Applicato prezzo consigliato a {scope_lbl}, lato {side_lbl}: {applied} valori modificati"
-                + (f" ({skipped} senza consigliato)" if skipped else ""),
+                f"Applied recommended price to {scope_lbl}, {side_lbl}: {applied} values updated"
+                + (f" ({skipped} with no recommended)" if skipped else ""),
                 4000,
             )
 
-    # --- comandi di sezione ---------------------------------------------
+    # --- shared helpers for section / bulk actions ---------------------
 
-    def _on_section_action_apply(self, section_idx: int, action: int):
-        idx = self._current_stop_idx()
-        if idx is None:
-            return
-        _title, gids = GOOD_SECTIONS[section_idx]
+    def _apply_action_to_gids(self, idx: int, gids: list[int], action: int) -> int:
         for gid in gids:
             self.route.set_good_action(idx, gid, action)
-        self.statusBar().showMessage(
-            f"Sezione '{_title}': azione '{action}' applicata a {len(gids)} merci", 3000)
+        return len(gids)
 
-    def _on_section_mode_apply(self, section_idx: int, mode: str):
-        idx = self._current_stop_idx()
-        if idx is None:
-            return
-        _title, gids = GOOD_SECTIONS[section_idx]
+    def _apply_mode_to_gids(self, idx: int, gids: list[int], mode: str) -> int:
         stop = self.route.stops[idx]
         applied = 0
         for gid in gids:
@@ -339,14 +338,9 @@ class MainWindow(QtWidgets.QMainWindow):
                     price = price_raw if price_raw != WAREHOUSE_PRICE else 0
                 self.route.set_good_trade(idx, gid, side=side, mode=mode, qty=qty, price=price)
                 applied += 1
-        self.statusBar().showMessage(
-            f"Sezione '{_title}': modalità '{mode}' applicata a {applied} valori", 3000)
+        return applied
 
-    def _on_section_advised_apply(self, section_idx: int):
-        idx = self._current_stop_idx()
-        if idx is None:
-            return
-        _title, gids = GOOD_SECTIONS[section_idx]
+    def _apply_advised_to_gids(self, idx: int, gids: list[int]) -> tuple[int, int]:
         stop = self.route.stops[idx]
         city_key = self.store.cities_by_id[stop["trailer"]["city_id"]]["key"]
         applied, skipped = 0, 0
@@ -366,16 +360,9 @@ class MainWindow(QtWidgets.QMainWindow):
                     mode = "city"
                 self.route.set_good_trade(idx, gid, side=side, mode=mode, qty=qty, price=adv)
                 applied += 1
-        msg = f"Sezione '{_title}': applicati {applied} prezzi consigliati"
-        if skipped:
-            msg += f" ({skipped} senza consigliato)"
-        self.statusBar().showMessage(msg, 4000)
+        return applied, skipped
 
-    def _on_section_qty_apply(self, section_idx: int, qty: int):
-        idx = self._current_stop_idx()
-        if idx is None:
-            return
-        _title, gids = GOOD_SECTIONS[section_idx]
+    def _apply_qty_to_gids(self, idx: int, gids: list[int], qty: int) -> int:
         stop = self.route.stops[idx]
         applied = 0
         for gid in gids:
@@ -391,10 +378,85 @@ class MainWindow(QtWidgets.QMainWindow):
                     price = price_raw if price_raw != WAREHOUSE_PRICE else 0
                 self.route.set_good_trade(idx, gid, side=side, mode=mode, qty=qty, price=price)
                 applied += 1
-        self.statusBar().showMessage(
-            f"Sezione '{_title}': qty={qty} impostata su {applied} valori", 3000)
+        return applied
 
-    # --- copia/incolla ---------------------------------------------------
+    # --- section commands ----------------------------------------------
+
+    def _on_section_action_apply(self, section_idx: int, action: int):
+        idx = self._current_stop_idx()
+        if idx is None:
+            return
+        title, gids = GOOD_SECTIONS[section_idx]
+        n = self._apply_action_to_gids(idx, gids, action)
+        self.statusBar().showMessage(
+            f"Section '{title}': action applied to {n} goods", 3000)
+
+    def _on_section_mode_apply(self, section_idx: int, mode: str):
+        idx = self._current_stop_idx()
+        if idx is None:
+            return
+        title, gids = GOOD_SECTIONS[section_idx]
+        n = self._apply_mode_to_gids(idx, gids, mode)
+        self.statusBar().showMessage(
+            f"Section '{title}': mode '{mode}' applied to {n} values", 3000)
+
+    def _on_section_advised_apply(self, section_idx: int):
+        idx = self._current_stop_idx()
+        if idx is None:
+            return
+        title, gids = GOOD_SECTIONS[section_idx]
+        applied, skipped = self._apply_advised_to_gids(idx, gids)
+        msg = f"Section '{title}': applied {applied} recommended prices"
+        if skipped:
+            msg += f" ({skipped} with no recommended)"
+        self.statusBar().showMessage(msg, 4000)
+
+    def _on_section_qty_apply(self, section_idx: int, qty: int):
+        idx = self._current_stop_idx()
+        if idx is None:
+            return
+        title, gids = GOOD_SECTIONS[section_idx]
+        applied = self._apply_qty_to_gids(idx, gids, qty)
+        self.statusBar().showMessage(
+            f"Section '{title}': qty={qty} set on {applied} values", 3000)
+
+    # --- bulk (multi-select) commands ----------------------------------
+
+    def _on_bulk_action_apply(self, gids: list, action: int):
+        idx = self._current_stop_idx()
+        if idx is None:
+            return
+        n = self._apply_action_to_gids(idx, list(gids), int(action))
+        self.statusBar().showMessage(
+            f"Selection: action applied to {n} goods", 3000)
+
+    def _on_bulk_mode_apply(self, gids: list, mode: str):
+        idx = self._current_stop_idx()
+        if idx is None:
+            return
+        n = self._apply_mode_to_gids(idx, list(gids), str(mode))
+        self.statusBar().showMessage(
+            f"Selection: mode '{mode}' applied to {n} values", 3000)
+
+    def _on_bulk_advised_apply(self, gids: list):
+        idx = self._current_stop_idx()
+        if idx is None:
+            return
+        applied, skipped = self._apply_advised_to_gids(idx, list(gids))
+        msg = f"Selection: applied {applied} recommended prices"
+        if skipped:
+            msg += f" ({skipped} with no recommended)"
+        self.statusBar().showMessage(msg, 4000)
+
+    def _on_bulk_qty_apply(self, gids: list, qty: int):
+        idx = self._current_stop_idx()
+        if idx is None:
+            return
+        applied = self._apply_qty_to_gids(idx, list(gids), int(qty))
+        self.statusBar().showMessage(
+            f"Selection: qty={qty} set on {applied} values", 3000)
+
+    # --- copy/paste ----------------------------------------------------
 
     def _on_copy_good(self, good_id: int):
         idx = self._current_stop_idx()
@@ -405,12 +467,12 @@ class MainWindow(QtWidgets.QMainWindow):
             "action": stop["actions"][good_id],
             "trade": copy.deepcopy(stop["trades"][good_id]),
         }
-        gname = self.store.goods_by_id[good_id]["name_it"]
-        self.statusBar().showMessage(f"Copiato '{gname}' negli appunti", 3000)
+        gname = self.store.goods_by_id[good_id]["name_en"]
+        self.statusBar().showMessage(f"Copied '{gname}' to clipboard", 3000)
 
     def _on_paste_good(self, good_id: int):
         if not self._good_clipboard:
-            QtWidgets.QMessageBox.information(self, "Incolla", "Nessuna configurazione merce negli appunti.")
+            QtWidgets.QMessageBox.information(self, "Paste", "No good config in clipboard.")
             return
         idx = self._current_stop_idx()
         if idx is None:
@@ -428,8 +490,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 else:
                     price = price_raw if price_raw != WAREHOUSE_PRICE else 0
                 self.route.set_good_trade(idx, good_id, side=side, mode=mode, qty=qty, price=price)
-        gname = self.store.goods_by_id[good_id]["name_it"]
-        self.statusBar().showMessage(f"Configurazione incollata su '{gname}'", 3000)
+        gname = self.store.goods_by_id[good_id]["name_en"]
+        self.statusBar().showMessage(f"Pasted config onto '{gname}'", 3000)
 
     def _on_reset_good(self, good_id: int):
         idx = self._current_stop_idx()
@@ -447,10 +509,10 @@ class MainWindow(QtWidgets.QMainWindow):
         city = self.store.cities_by_id.get(self.route.stops[row]["trailer"]["city_id"])
         name = city["name"] if city else f"#{row}"
         menu = QtWidgets.QMenu(self)
-        a_copy = menu.addAction(f"Copia configurazione di tutto lo stop '{name}'")
-        a_paste = menu.addAction(f"Incolla configurazione su '{name}'")
+        a_copy = menu.addAction(f"Copy entire stop '{name}'")
+        a_paste = menu.addAction(f"Paste config onto '{name}'")
         menu.addSeparator()
-        a_rem = menu.addAction(f"Rimuovi tappa '{name}'")
+        a_rem = menu.addAction(f"Remove stop '{name}'")
         chosen = menu.exec(self.stops_list.viewport().mapToGlobal(pos))
         if chosen == a_copy:
             self._copy_stop(row)
@@ -468,11 +530,11 @@ class MainWindow(QtWidgets.QMainWindow):
         }
         city = self.store.cities_by_id.get(stop["trailer"]["city_id"])
         name = city["name"] if city else "?"
-        self.statusBar().showMessage(f"Copiato tutto lo stop '{name}' negli appunti", 3000)
+        self.statusBar().showMessage(f"Copied entire stop '{name}' to clipboard", 3000)
 
     def _paste_stop(self, idx: int):
         if not self._stop_clipboard:
-            QtWidgets.QMessageBox.information(self, "Incolla", "Nessuna configurazione stop negli appunti.")
+            QtWidgets.QMessageBox.information(self, "Paste", "No stop config in clipboard.")
             return
         if not (0 <= idx < len(self.route.stops)):
             return
@@ -486,7 +548,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.route.stop_changed.emit(idx)
         city = self.store.cities_by_id.get(stop["trailer"]["city_id"])
         name = city["name"] if city else "?"
-        self.statusBar().showMessage(f"Configurazione incollata su stop '{name}'", 3000)
+        self.statusBar().showMessage(f"Pasted config onto stop '{name}'", 3000)
 
     def _on_route_excl_changed(self, item: QtWidgets.QListWidgetItem):
         excl = []
@@ -513,14 +575,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self.route.set_dirty()
             self.route.changed.emit()
 
-    # --- azioni menu ----------------------------------------------------
+    # --- menu actions --------------------------------------------------
 
     def _maybe_discard_unsaved(self) -> bool:
         if not self.route.dirty:
             return True
         r = QtWidgets.QMessageBox.question(
-            self, "Modifiche non salvate",
-            "La rotta corrente ha modifiche non salvate. Vuoi salvarla prima?",
+            self, "Unsaved changes",
+            "The current route has unsaved changes. Save first?",
             QtWidgets.QMessageBox.Save | QtWidgets.QMessageBox.Discard | QtWidgets.QMessageBox.Cancel,
             QtWidgets.QMessageBox.Save,
         )
@@ -536,50 +598,50 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_open_route(self):
         if not self._maybe_discard_unsaved():
             return
-        path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Apri rotta", str(ROUTES_DIR), "File .ahr (*.ahr)")
+        path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open route", str(ROUTES_DIR), "AHR files (*.ahr)")
         if not path:
             return
         try:
             self.route = Route.from_file(self.store, Path(path)); self._wire_route()
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Errore apertura", f"{type(e).__name__}: {e}")
+            QtWidgets.QMessageBox.critical(self, "Open error", f"{type(e).__name__}: {e}")
             return
         self._on_route_changed()
 
     def _on_save_route(self) -> bool:
         if not self.route.stops:
-            QtWidgets.QMessageBox.warning(self, "Salva", "Non puoi salvare una rotta senza stop.")
+            QtWidgets.QMessageBox.warning(self, "Save", "Cannot save a route with no stops.")
             return False
         if not self.route.filepath:
             return self._on_save_route_as()
         try:
             self.route.save_to(self.route.filepath)
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Errore salvataggio", f"{type(e).__name__}: {e}")
+            QtWidgets.QMessageBox.critical(self, "Save error", f"{type(e).__name__}: {e}")
             return False
         self._on_route_changed()
         return True
 
     def _on_save_route_as(self) -> bool:
         if not self.route.stops:
-            QtWidgets.QMessageBox.warning(self, "Salva con nome", "Non puoi salvare una rotta senza stop.")
+            QtWidgets.QMessageBox.warning(self, "Save as", "Cannot save a route with no stops.")
             return False
         default_dir = ROUTES_DIR / "built"; default_dir.mkdir(parents=True, exist_ok=True)
-        suggested = str(default_dir / "rotta.ahr")
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Salva rotta con nome", suggested, "File .ahr (*.ahr)")
+        suggested = str(default_dir / "route.ahr")
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save route as", suggested, "AHR files (*.ahr)")
         if not path:
             return False
         try:
             self.route.save_to(Path(path))
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Errore salvataggio", f"{type(e).__name__}: {e}")
+            QtWidgets.QMessageBox.critical(self, "Save error", f"{type(e).__name__}: {e}")
             return False
         self._on_route_changed()
         return True
 
     def _on_add_stop(self):
         if len(self.route.stops) >= ahr.MAX_STOPS:
-            QtWidgets.QMessageBox.warning(self, "Aggiungi tappa", f"Massimo {ahr.MAX_STOPS} stop per rotta.")
+            QtWidgets.QMessageBox.warning(self, "Add stop", f"Maximum {ahr.MAX_STOPS} stops per route.")
             return
         dlg = AddStopDialog(self.store, self)
         if dlg.exec() != QtWidgets.QDialog.Accepted or dlg.selected_city_id is None:
@@ -587,7 +649,7 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             idx = self.route.add_stop(dlg.selected_city_id)
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Errore", str(e))
+            QtWidgets.QMessageBox.critical(self, "Error", str(e))
             return
         self.stops_list.setCurrentRow(idx)
 
@@ -603,9 +665,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _on_about(self):
         QtWidgets.QMessageBox.about(
-            self, "Informazioni",
-            f"<h3>{APP_NAME}</h3><p>Versione {__version__}</p>"
-            "<p>Editor per le rotte commerciali (.ahr) di Port Royale 2 — Impero & Pirati.</p>"
+            self, "About",
+            f"<h3>{APP_NAME}</h3><p>Version {__version__}</p>"
+            "<p>Editor for trade routes (.ahr) of Port Royale 2 — Empire & Pirates.</p>"
         )
 
     def closeEvent(self, ev: QtGui.QCloseEvent):

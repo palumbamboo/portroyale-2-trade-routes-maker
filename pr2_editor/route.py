@@ -1,4 +1,4 @@
-"""Route: modello della rotta corrente (wrapper attorno al dict serializzabile)."""
+"""Route: model of the current route (wrapper around the serializable dict)."""
 from __future__ import annotations
 from pathlib import Path
 
@@ -76,7 +76,7 @@ class Route(QtCore.QObject):
     def add_stop(self, city_id: int) -> int:
         idx = len(self.stops)
         if idx >= ahr.MAX_STOPS:
-            raise ValueError(f"Massimo {ahr.MAX_STOPS} stop per rotta")
+            raise ValueError(f"Maximum {ahr.MAX_STOPS} stops per route")
         self.stops.append(self._empty_stop(city_id, is_start=(idx == 0)))
         self._refresh_header_counts()
         self.set_dirty()
@@ -110,7 +110,7 @@ class Route(QtCore.QObject):
 
     def display_name(self) -> str:
         suffix = "*" if self._dirty else ""
-        return (self.filepath.name if self.filepath else "(rotta senza nome)") + suffix
+        return (self.filepath.name if self.filepath else "(unnamed route)") + suffix
 
     def set_good_action(self, stop_idx: int, good_id: int, new_action: int) -> None:
         if not (0 <= stop_idx < len(self.stops)) or not (0 <= good_id < 20):
@@ -162,7 +162,7 @@ class Route(QtCore.QObject):
 
     def save_to(self, path: Path) -> None:
         if not self.stops:
-            raise ValueError("Impossibile salvare una rotta senza stop")
+            raise ValueError("Cannot save a route with no stops")
         data = ahr.encode(self.doc)
         path.write_bytes(data)
         self.filepath = path

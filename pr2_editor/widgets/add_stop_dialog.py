@@ -1,8 +1,9 @@
-"""Dialog "Aggiungi tappa": selezione città dalla lista filtrabile."""
+"""Add-stop dialog: pick a city from a filterable list."""
 from __future__ import annotations
 
 from PySide6 import QtCore, QtWidgets
 
+from ..constants import NATION_LABELS
 from ..store import Store
 
 
@@ -10,7 +11,7 @@ class AddStopDialog(QtWidgets.QDialog):
     def __init__(self, store: Store, parent=None):
         super().__init__(parent)
         self.store = store
-        self.setWindowTitle("Aggiungi tappa")
+        self.setWindowTitle("Add stop")
         self.resize(560, 600)
         self.selected_city_id: int | None = None
         self._build()
@@ -18,24 +19,24 @@ class AddStopDialog(QtWidgets.QDialog):
     def _build(self):
         lay = QtWidgets.QVBoxLayout(self)
         f = QtWidgets.QHBoxLayout()
-        f.addWidget(QtWidgets.QLabel("Cerca:"))
+        f.addWidget(QtWidgets.QLabel("Search:"))
         self.ed_search = QtWidgets.QLineEdit()
-        self.ed_search.setPlaceholderText("nome città...")
+        self.ed_search.setPlaceholderText("city name...")
         self.ed_search.textChanged.connect(self._refresh_filter)
         f.addWidget(self.ed_search, 1)
-        f.addWidget(QtWidgets.QLabel("Nazione:"))
+        f.addWidget(QtWidgets.QLabel("Nation:"))
         self.cb_nation = QtWidgets.QComboBox()
-        self.cb_nation.addItem("(tutte)", None)
+        self.cb_nation.addItem("(all)", None)
         for n in sorted({c["nation"] for c in self.store.config["cities"]}):
-            self.cb_nation.addItem(n, n)
+            self.cb_nation.addItem(NATION_LABELS.get(n, n.capitalize()), n)
         self.cb_nation.currentIndexChanged.connect(self._refresh_filter)
         f.addWidget(self.cb_nation)
-        f.addWidget(QtWidgets.QLabel("Ruolo:"))
+        f.addWidget(QtWidgets.QLabel("Role:"))
         self.cb_role = QtWidgets.QComboBox()
-        self.cb_role.addItem("(tutti)", None)
-        self.cb_role.addItem("V (vicere/capitale)", "V")
-        self.cb_role.addItem("G (governatorato)", "G")
-        self.cb_role.addItem("normale", "_NONE")
+        self.cb_role.addItem("(all)", None)
+        self.cb_role.addItem("V (viceroy/capital)", "V")
+        self.cb_role.addItem("G (governorate)", "G")
+        self.cb_role.addItem("regular", "_NONE")
         self.cb_role.currentIndexChanged.connect(self._refresh_filter)
         f.addWidget(self.cb_role)
         lay.addLayout(f)
@@ -57,10 +58,11 @@ class AddStopDialog(QtWidgets.QDialog):
                 badges.append(c["role"])
             wl = self.store.city_warehouse_level(c["key"])
             if wl > 0:
-                badges.append(f"M{wl}")
+                badges.append(f"W{wl}")
             badge_str = (" [" + ",".join(badges) + "]") if badges else ""
             nation = self.store.city_nation(c["key"])
-            text = f"{c['id']:>3}  {c['name']}  ·  {nation}{badge_str}"
+            nation_label = NATION_LABELS.get(nation, nation.capitalize())
+            text = f"{c['id']:>3}  {c['name']}  ·  {nation_label}{badge_str}"
             it = QtWidgets.QListWidgetItem(text)
             it.setData(QtCore.Qt.UserRole, c["id"])
             self.lst.addItem(it)

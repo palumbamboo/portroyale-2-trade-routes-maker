@@ -1,4 +1,4 @@
-"""Editor desktop per rotte commerciali (.ahr) di Port Royale 2 — Impero & Pirati."""
+"""Desktop editor for trade routes (.ahr files) of Port Royale 2 — Empire & Pirates."""
 
-__version__ = "0.5.0"
-APP_NAME = "Editor Rotte Port Royale 2"
+__version__ = "0.6.0"
+APP_NAME = "Port Royale 2 Trade Routes Editor"

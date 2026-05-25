@@ -237,7 +237,7 @@
       "id": 0,
       "key": "corpus_christi",
       "name": "Corpus Christi",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -252,7 +252,7 @@
       "id": 1,
       "key": "new_orleans",
       "name": "New Orleans",
-      "nation": "francia",
+      "nation": "france",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -267,7 +267,7 @@
       "id": 2,
       "key": "biloxi",
       "name": "Biloxi",
-      "nation": "francia",
+      "nation": "france",
       "role": "V",
       "confirmed": true,
       "produces": [
@@ -286,7 +286,7 @@
       "id": 3,
       "key": "pensacola",
       "name": "Pensacola",
-      "nation": "francia",
+      "nation": "france",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -301,7 +301,7 @@
       "id": 4,
       "key": "port_st_joe",
       "name": "Port St. Joe",
-      "nation": "francia",
+      "nation": "france",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -316,7 +316,7 @@
       "id": 5,
       "key": "tampa",
       "name": "Tampa",
-      "nation": "francia",
+      "nation": "france",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -331,7 +331,7 @@
       "id": 6,
       "key": "florida_keys",
       "name": "Florida Keys",
-      "nation": "francia",
+      "nation": "france",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -346,7 +346,7 @@
       "id": 7,
       "key": "tampico",
       "name": "Tampico",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -361,7 +361,7 @@
       "id": 8,
       "key": "veracruz",
       "name": "Veracruz",
-      "nation": "spagna",
+      "nation": "spain",
       "role": "G",
       "confirmed": true,
       "produces": [
@@ -380,7 +380,7 @@
       "id": 9,
       "key": "villa_hermosa",
       "name": "Villa Hermosa",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -395,7 +395,7 @@
       "id": 10,
       "key": "campeche",
       "name": "Campeche",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -410,7 +410,7 @@
       "id": 11,
       "key": "sisal",
       "name": "Sisal",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -425,7 +425,7 @@
       "id": 12,
       "key": "cancun",
       "name": "Cancun",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -440,7 +440,7 @@
       "id": 13,
       "key": "belize",
       "name": "Belize",
-      "nation": "spagna",
+      "nation": "spain",
       "role": "G",
       "confirmed": true,
       "produces": [
@@ -459,7 +459,7 @@
       "id": 14,
       "key": "roatan",
       "name": "Roatan",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -474,7 +474,7 @@
       "id": 15,
       "key": "charlestown",
       "name": "Charlestown",
-      "nation": "francia",
+      "nation": "france",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -489,7 +489,7 @@
       "id": 16,
       "key": "fort_caroline",
       "name": "Fort Caroline",
-      "nation": "francia",
+      "nation": "france",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -504,7 +504,7 @@
       "id": 17,
       "key": "st_augustine",
       "name": "St. Augustine",
-      "nation": "francia",
+      "nation": "france",
       "role": "G",
       "confirmed": true,
       "produces": [
@@ -523,7 +523,7 @@
       "id": 18,
       "key": "gran_bahama",
       "name": "Gran Bahama",
-      "nation": "olanda",
+      "nation": "netherlands",
       "role": "V",
       "confirmed": true,
       "produces": [
@@ -542,7 +542,7 @@
       "id": 19,
       "key": "eleuthera",
       "name": "Eleuthera",
-      "nation": "olanda",
+      "nation": "netherlands",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -557,7 +557,7 @@
       "id": 20,
       "key": "nassau",
       "name": "Nassau",
-      "nation": "olanda",
+      "nation": "netherlands",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -572,7 +572,7 @@
       "id": 21,
       "key": "cat_island",
       "name": "Cat Island",
-      "nation": "olanda",
+      "nation": "netherlands",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -587,7 +587,7 @@
       "id": 22,
       "key": "charles_town",
       "name": "Charles Town",
-      "nation": "olanda",
+      "nation": "netherlands",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -602,7 +602,7 @@
       "id": 23,
       "key": "nombre_de_dios",
       "name": "Nombre de Dios",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -617,7 +617,7 @@
       "id": 24,
       "key": "evangelista",
       "name": "Evangelista",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -632,7 +632,7 @@
       "id": 25,
       "key": "havana",
       "name": "L'Avana",
-      "nation": "spagna",
+      "nation": "spain",
       "role": "G",
       "confirmed": true,
       "produces": [
@@ -651,7 +651,7 @@
       "id": 26,
       "key": "trinidad",
       "name": "Trinidad",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -666,7 +666,7 @@
       "id": 27,
       "key": "andros",
       "name": "Andros",
-      "nation": "olanda",
+      "nation": "netherlands",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -681,7 +681,7 @@
       "id": 28,
       "key": "gibara",
       "name": "Gibara",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -696,7 +696,7 @@
       "id": 29,
       "key": "santiago",
       "name": "Santiago",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -711,7 +711,7 @@
       "id": 30,
       "key": "tortuga",
       "name": "Tortuga",
-      "nation": "inghilterra",
+      "nation": "england",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -726,7 +726,7 @@
       "id": 31,
       "key": "port_au_prince",
       "name": "Port-au-Prince",
-      "nation": "inghilterra",
+      "nation": "england",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -741,7 +741,7 @@
       "id": 32,
       "key": "turk_islands",
       "name": "Turk Islands",
-      "nation": "olanda",
+      "nation": "netherlands",
       "role": "G",
       "confirmed": true,
       "produces": [
@@ -760,7 +760,7 @@
       "id": 33,
       "key": "isabella",
       "name": "Isabella",
-      "nation": "inghilterra",
+      "nation": "england",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -775,7 +775,7 @@
       "id": 34,
       "key": "santo_domingo",
       "name": "Santo Domingo",
-      "nation": "inghilterra",
+      "nation": "england",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -790,7 +790,7 @@
       "id": 35,
       "key": "san_juan",
       "name": "San Juan",
-      "nation": "inghilterra",
+      "nation": "england",
       "role": "G",
       "confirmed": true,
       "produces": [
@@ -809,7 +809,7 @@
       "id": 36,
       "key": "st_thome",
       "name": "St. Thome",
-      "nation": "inghilterra",
+      "nation": "england",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -824,7 +824,7 @@
       "id": 37,
       "key": "st_martin",
       "name": "St. Martin",
-      "nation": "inghilterra",
+      "nation": "england",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -839,7 +839,7 @@
       "id": 38,
       "key": "st_kitts",
       "name": "St. Kitts",
-      "nation": "inghilterra",
+      "nation": "england",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -854,7 +854,7 @@
       "id": 39,
       "key": "antigua",
       "name": "Antigua",
-      "nation": "inghilterra",
+      "nation": "england",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -869,7 +869,7 @@
       "id": 40,
       "key": "guadalupe",
       "name": "Guadalupe",
-      "nation": "inghilterra",
+      "nation": "england",
       "role": "V",
       "confirmed": true,
       "produces": [
@@ -888,7 +888,7 @@
       "id": 41,
       "key": "grenada",
       "name": "Grenada",
-      "nation": "inghilterra",
+      "nation": "england",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -903,7 +903,7 @@
       "id": 42,
       "key": "st_lucia",
       "name": "St. Lucia",
-      "nation": "inghilterra",
+      "nation": "england",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -918,7 +918,7 @@
       "id": 43,
       "key": "martinica",
       "name": "Martinica",
-      "nation": "inghilterra",
+      "nation": "england",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -933,7 +933,7 @@
       "id": 44,
       "key": "barbados",
       "name": "Barbados",
-      "nation": "inghilterra",
+      "nation": "england",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -948,7 +948,7 @@
       "id": 45,
       "key": "providence",
       "name": "Providence",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -963,7 +963,7 @@
       "id": 46,
       "key": "cayman",
       "name": "Cayman",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -978,7 +978,7 @@
       "id": 47,
       "key": "port_royale",
       "name": "Port Royale",
-      "nation": "spagna",
+      "nation": "spain",
       "role": "V",
       "confirmed": true,
       "produces": [
@@ -997,7 +997,7 @@
       "id": 48,
       "key": "cartagena",
       "name": "Cartagena",
-      "nation": "spagna",
+      "nation": "spain",
       "role": "G",
       "confirmed": true,
       "produces": [
@@ -1016,7 +1016,7 @@
       "id": 49,
       "key": "santa_maria",
       "name": "Santa Maria",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -1031,7 +1031,7 @@
       "id": 50,
       "key": "maracaibo",
       "name": "Maracaibo",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -1046,7 +1046,7 @@
       "id": 51,
       "key": "gibraltar",
       "name": "Gibraltar",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -1061,7 +1061,7 @@
       "id": 52,
       "key": "coro",
       "name": "Coro",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -1076,7 +1076,7 @@
       "id": 53,
       "key": "curacao",
       "name": "Curacao",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -1091,7 +1091,7 @@
       "id": 54,
       "key": "puerto_cabello",
       "name": "Puerto Cabello",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -1106,7 +1106,7 @@
       "id": 55,
       "key": "caracas",
       "name": "Caracas",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -1121,7 +1121,7 @@
       "id": 56,
       "key": "margarita",
       "name": "Margarita",
-      "nation": "spagna",
+      "nation": "spain",
       "role": "G",
       "confirmed": true,
       "produces": [
@@ -1140,7 +1140,7 @@
       "id": 57,
       "key": "puerto_santo",
       "name": "Puerto Santo",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -1155,7 +1155,7 @@
       "id": 58,
       "key": "port_of_spain",
       "name": "Port of Spain",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
@@ -1170,7 +1170,7 @@
       "id": 59,
       "key": "georgetown",
       "name": "Georgetown",
-      "nation": "spagna",
+      "nation": "spain",
       "role": null,
       "confirmed": true,
       "produces": [
