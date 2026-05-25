@@ -1,135 +1,139 @@
 # Port Royale 2 — Trade Routes Maker
 
-Editor per le rotte commerciali (`.ahr`) di **Port Royale 2 — Impero & Pirati**.
-Decodifica/codifica del formato, builder JSON → `.ahr`, e una GUI desktop per creare/modificare rotte senza toccare il gioco.
+Editor for the trade routes (`.ahr` files) of **Port Royale 2 — Empire & Pirates**.
+Includes a format decoder/encoder, a JSON → `.ahr` builder, and a desktop GUI to create and edit routes without touching the game.
 
-## Stato
+## Status
 
-- ✅ Formato `.ahr` completamente decifrato (header, esclusioni rotta, azioni per merce, modalità carico/scarico, quantità, prezzi-soglia, città+magazzino).
-- ✅ Mapping completo: 60 città (id 0-59 con nome, nazione, ruolo V/G, merci prodotte), 20 merci (id 0-19 con nome, prezzi min/mercato/max, prezzi consigliati buy/sell).
-- ✅ Encoder/decoder Python con roundtrip byte-perfect (15 file di test).
-- ✅ Builder da JSON user-friendly a `.ahr`, validato in-game.
-- ✅ GUI PySide6 in stile tabellare con editing inline di tutte le merci.
-- 🚧 Packaging in `.exe` Windows standalone via PyInstaller.
+- ✅ `.ahr` format fully reverse-engineered (header, route exclusions, per-good actions, load/unload modes, quantities, threshold prices, city + warehouse).
+- ✅ Full mapping: 60 cities (id 0-59 with name, nation, role V/G, produced goods), 20 goods (id 0-19 with name, min/market/max prices, recommended buy/sell prices).
+- ✅ Python encoder/decoder with byte-perfect roundtrip (regression fixtures).
+- ✅ JSON → `.ahr` builder, validated in-game.
+- ✅ PySide6 GUI with inline table editing of all goods.
+- 🚧 Standalone Windows `.exe` packaging via PyInstaller.
 
-## Layout della cartella
+## Folder layout
 
 ```
 .
-├── ahr.py                    # decoder/encoder/builder + CLI (libreria standalone)
-├── pr2_editor/               # package della GUI (PySide6)
+├── ahr.py                    # decoder/encoder/builder + CLI (standalone library)
+├── pr2_editor/               # GUI package (PySide6)
 │   ├── __main__.py           #   `python -m pr2_editor`
 │   ├── app.py                #   main(): QApplication + MainWindow
 │   ├── constants.py
 │   ├── icons.py
-│   ├── store.py              #   config + user_state (override di partita)
-│   ├── route.py              #   modello della rotta corrente
+│   ├── store.py              #   config + user_state (per-game overrides)
+│   ├── route.py              #   current-route model
 │   ├── main_window.py
 │   └── widgets/
 │       ├── goods_table.py
 │       ├── add_stop_dialog.py
 │       ├── manage_cities_dialog.py
-│       └── qty_spinbox.py
-├── tests/                    # pytest: setter di Store, modello Route, roundtrip ahr
-├── pr2_config.json           # config statico: 20 merci + 60 città (read-only)
-├── user_state.json           # stato locale utente (gitignored)
-├── pyproject.toml            # dipendenze PySide6 + dev pytest
+│       └── row_widgets.py    #   QtySlider, PriceSlider, _ModifierToolButton
+├── tests/                    # pytest: Store setters, Route model, .ahr roundtrip
+├── pr2_config.json           # static config: 20 goods + 60 cities (read-only)
+├── user_state.json           # local per-game state (gitignored)
+├── pyproject.toml            # PySide6 deps + dev pytest
 ├── README.md
-├── port-royal2-2-map.jpg     # mappa di riferimento
-├── icons/                    # icone merci (segnaposti francesi da elzetia.com)
-└── rotte/
-    ├── input/                # rotte .ahr esportate dal gioco (gitignored)
-    ├── parsed/               # JSON decodificati (gitignored, derivati)
-    ├── built/                # output del builder (gitignored, derivati)
-    ├── build/                # spec JSON user-friendly per il builder
+├── port-royal2-2-map.jpg     # reference map
+├── icons/                    # good icons (French placeholders from elzetia.com)
+└── rotte/                    # data folder (legacy name from the original project)
+    ├── input/                # .ahr routes exported from the game (gitignored)
+    ├── parsed/               # decoded JSON (gitignored, derived)
+    ├── built/                # builder output (gitignored, derived)
+    ├── build/                # user-friendly JSON specs for the builder
     │   └── example-route.json
-    └── test/                 # fixture .ahr per regression test
+    └── test/                 # .ahr fixtures for regression tests
         └── fixture_rotta01.ahr
 ```
 
-## Setup dell'ambiente
+## Environment setup
 
 ```bash
-# Crea il venv con Python 3.13 (compatibile con PySide6) e installa le dipendenze
+# Create a venv with Python 3.13 (compatible with PySide6) and install deps
 uv venv --python 3.13 .venv
 uv pip install --python .venv/bin/python -e ".[dev]"
 ```
 
-## Uso CLI (`ahr.py`)
+## CLI usage (`ahr.py`)
 
 ```bash
-# Decodifica un .ahr in JSON ispezionabile
-python ahr.py decode "rotta.ahr" "rotta.json"
+# Decode an .ahr into inspectable JSON
+python ahr.py decode "route.ahr" "route.json"
 
-# Da JSON-raw (output di decode) a .ahr
-python ahr.py encode "rotta.json" "rotta.ahr"
+# From raw JSON (output of decode) to .ahr
+python ahr.py encode "route.json" "route.ahr"
 
-# Da JSON user-friendly a .ahr (vedi rotte/build/example-route.json)
-python ahr.py build "spec.json" "rotta.ahr"
+# From user-friendly JSON to .ahr (see rotte/build/example-route.json)
+python ahr.py build "spec.json" "route.ahr"
 
 # Roundtrip identity check
-python ahr.py roundtrip "rotta.ahr"
+python ahr.py roundtrip "route.ahr"
 
-# Lista i city_id degli stop (annotati con nomi se pr2_config.json è presente)
-python ahr.py cities "rotta.ahr"
+# List the city_ids of the stops (annotated with names if pr2_config.json is present)
+python ahr.py cities "route.ahr"
 
-# Decodifica tutti i .ahr di una cartella
+# Decode every .ahr in a folder
 python ahr.py decode-dir rotte/input rotte/parsed
 
-# Regression test (roundtrip su tutti i .ahr di una cartella)
+# Regression test (roundtrip over every .ahr in a folder)
 python ahr.py test rotte/test
 ```
 
-## Uso GUI
+## GUI usage
 
 ```bash
 .venv/bin/python -m pr2_editor
-# oppure, dopo `pip install -e .`:
+# or, after `pip install -e .`:
 pr2-editor
 ```
 
-Interfaccia in italiano con:
-- Pannello stop (drag-drop per riordinare) + esclusioni globali
-- Tabella merci 20×N editabile inline: azione (auto/excluded/manual), carica (mode/qty/prezzo), scarica idem
-- Bottoni 💰 prezzi consigliati con modificatori Ctrl/Shift
-- Context menu su prezzo (Min/Mercato/Max), su merce (copia/incolla/reset), su stop (copia/incolla)
-- `Ctrl+S` / `Ctrl+Shift+S` per salvataggio
-- Menu **Strumenti → Gestisci città**: livello magazzino, nazione corrente, override prezzi consigliati per partita
+Features:
+- **Stops panel** (drag-drop to reorder) + global exclusions checklist.
+- **Goods table** grouped in 5 sections (Basic resources / Raw materials / Production goods / Colonial goods / Imported & colony), with inline editing for every good: action (auto/excluded/manual), load (mode/qty/price), unload (same).
+- **Per-row sliders** for qty (0-2000 then MAX) and price (per-good range from `pr2_config.json`); the spinbox next to each slider is always editable for overrides.
+- **Section quick commands**: each section has Action / Mode / Apply-recommended-prices / Qty+Apply, acting on the 4 goods in the section.
+- **Multi-select**: tick the checkbox on any row to add goods to a bulk-action bar that appears above the table, with the same 4 quick commands acting on the selection.
+- **Visual cues** for excluded goods: route-excluded (strikethrough red), stop-excluded (italic gray).
+- **💰 buttons** apply the recommended price with Ctrl/Shift modifiers (this good only, both sides, all manual, etc.).
+- **Context menus** on price (Min/Market/Max), on good (copy/paste/reset), on stop (copy/paste/remove).
+- `Ctrl+S` / `Ctrl+Shift+S` to save / save as.
+- **Tools → Manage cities**: edit per-game overrides (warehouse level, current nation, recommended-price overrides per good).
 
-## Test
+## Tests
 
 ```bash
-# Regression sul codec .ahr
+# .ahr codec regression
 python ahr.py test rotte/test
 
-# Test pytest (Store, Route, roundtrip)
+# pytest suite (Store, Route, roundtrip)
 .venv/bin/pytest
 ```
 
-## Formato `.ahr` (sintesi)
+## `.ahr` format (summary)
 
 ```
-Header (11 byte):
-  magic        4 byte   = 0x41 0x04 0x00 0x00 ("A" + 0x04)
-  nstops       1 byte   numero stop (1-16)
-  capacity     1 byte   ceil(nstops/4)*4, cap 16
-  bitmap       5 byte   esclusioni rotta (1 bit = 1 merce attiva)
+Header (11 bytes):
+  magic        4 bytes  = 0x41 0x04 0x00 0x00 ("A" + 0x04)
+  nstops       1 byte   number of stops (1-16)
+  capacity     1 byte   ceil(nstops/4)*4, capped at 16
+  bitmap       5 bytes  route exclusions (1 bit = 1 active good)
 
-Stop (426 byte, ripetuto per nstops volte):
-  display_order   20 byte    permutazione 0..19 (manuali in cima nell'UI)
+Stop (426 bytes, repeated nstops times):
+  display_order   20 bytes   permutation 0..19 (manuals on top in the UI)
   actions[20]     u32 LE     0=excluded, 1=auto, 2=manual
-  trades[20]      16 byte/cad:
-    load_price    u32 LE     soglia città (oro/ton); 0xFFFFFFFF = "con magazzino"
-    load_qty      u16 LE     quantità (0xFFFF = "max")
-    load_aux      u16 LE     residuo snapshot, preservato per roundtrip
-    unload_price  u32 LE     idem per scarico
+  trades[20]      16 bytes each:
+    load_price    u32 LE     city threshold (gold/ton); 0xFFFFFFFF = "from warehouse"
+    load_qty      u16 LE     quantity (0xFFFF = "max")
+    load_aux      u16 LE     snapshot residue, preserved for roundtrip
+    unload_price  u32 LE     same as above for unload
     unload_qty    u16 LE
     unload_aux    u16 LE
-  trailer         6 byte     city_id, 0x00, 0x21, 0x00, start_flag, 0x00
+  trailer         6 bytes    city_id, 0x00, 0x21, 0x00, start_flag, 0x00
 ```
 
-## Note
+## Notes
 
-- Le città cambiano nazione durante la partita: il campo `nation` in `pr2_config.json` è la nazione iniziale al nuovo gioco. Gli override per la partita corrente vivono in `user_state.json` (gitignored).
-- I prezzi "consigliati" buy/sell per merce sono definiti globalmente in `pr2_config.json` e possono essere sovrascritti per singola città in `user_state.json`.
-- Le icone delle merci sono prese da [elzetia.com](https://elzetia.com) — sono in francese, alcune sono usate come segnaposto per le merci specifiche di P.R.2 (Spezie, Vino, Coloni).
+- Cities can change nation during a game: the `nation` field in `pr2_config.json` is the initial nation at the start of a new game. Per-game overrides live in `user_state.json` (gitignored).
+- Per-good recommended buy/sell prices are defined globally in `pr2_config.json` and can be overridden per city in `user_state.json` via Tools → Manage cities.
+- Good icons come from [elzetia.com](https://elzetia.com) — they are French and a few are used as placeholders for the PR2-specific goods (Spices, Wine, Settlers).
