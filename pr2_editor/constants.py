@@ -8,6 +8,8 @@ CONFIG_PATH = WORKSPACE / "pr2_config.json"
 USER_STATE_PATH = WORKSPACE / "user_state.json"
 ICONS_DIR = WORKSPACE / "icons"
 ROUTES_DIR = WORKSPACE / "rotte"
+MAP_IMAGE_PATH = WORKSPACE / "port-royal2-2-map.jpg"
+MAP_COORDS_PATH = WORKSPACE / "pr2_map_coords.json"
 
 # .ahr format sentinels
 QTY_MAX = 0xFFFF

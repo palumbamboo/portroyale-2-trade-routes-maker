@@ -29,9 +29,14 @@ Includes a format decoder/encoder, a JSON → `.ahr` builder, and a desktop GUI 
 │       ├── goods_table.py
 │       ├── add_stop_dialog.py
 │       ├── manage_cities_dialog.py
+│       ├── map_view.py       #   QGraphicsView with map + city markers
+│       ├── map_window.py     #   standalone map window
 │       └── row_widgets.py    #   QtySlider, PriceSlider, _ModifierToolButton
+├── tools/
+│   └── calibrate_map.py      # one-shot tool to record city (x, y) on the map
 ├── tests/                    # pytest: Store setters, Route model, .ahr roundtrip
 ├── pr2_config.json           # static config: 20 goods + 60 cities (read-only)
+├── pr2_map_coords.json       # city -> (x, y) on the map image (produced by calibrate_map.py)
 ├── user_state.json           # local per-game state (gitignored)
 ├── pyproject.toml            # PySide6 deps + dev pytest
 ├── README.md
@@ -98,7 +103,19 @@ Features:
 - **💰 buttons** apply the recommended price with Ctrl/Shift modifiers (this good only, both sides, all manual, etc.).
 - **Context menus** on price (Min/Market/Max), on good (copy/paste/reset), on stop (copy/paste/remove).
 - `Ctrl+S` / `Ctrl+Shift+S` to save / save as.
+- **Tools → Map view**: clickable map of the Caribbean. Hover a city to preview name / nation / role / produced goods / warehouse; click to add it to the current route. Stops are drawn in order with connecting lines and numbered badges. Requires `pr2_map_coords.json` (see *Map calibration* below).
 - **Tools → Manage cities**: edit per-game overrides (warehouse level, current nation, recommended-price overrides per good).
+- **Filter** input above the goods table hides goods that don't match the typed text. **Green dot** prefix on goods produced by the current stop's city.
+
+## Map calibration
+
+The map view requires per-city coordinates on the image. Generate them once with:
+
+```bash
+.venv/bin/python tools/calibrate_map.py
+```
+
+The tool walks city-by-city (60 in total): click on the matching city on the map image, the (x, y) is recorded. Press *Save & quit* when done. Re-run any time to fix or extend. Output is written to `pr2_map_coords.json` and committed to the repo so other clones don't need to redo it.
 
 ## Tests
 

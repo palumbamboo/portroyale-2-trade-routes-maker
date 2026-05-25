@@ -278,6 +278,7 @@ class GoodsTable(QtWidgets.QWidget):
         self._route_excluded: list[int] = []
         self._city_has_warehouse = False
         self._city_key: str | None = None
+        self._city_produces: set[int] = set()
         self._suppress = False
         self._row_widgets: list[dict] = [{} for _ in range(20)]
         self._section_headers: list[_SectionHeaderWidget] = []
@@ -288,6 +289,17 @@ class GoodsTable(QtWidgets.QWidget):
     def _build(self):
         v = QtWidgets.QVBoxLayout(self)
         v.setContentsMargins(0, 0, 0, 0)
+
+        # Filter search
+        filter_row = QtWidgets.QHBoxLayout()
+        filter_row.setContentsMargins(4, 0, 4, 0)
+        filter_row.addWidget(QtWidgets.QLabel("Filter:"))
+        self.ed_filter = QtWidgets.QLineEdit()
+        self.ed_filter.setPlaceholderText("type to filter goods by name…")
+        self.ed_filter.setClearButtonEnabled(True)
+        self.ed_filter.textChanged.connect(self._apply_filter)
+        filter_row.addWidget(self.ed_filter, 1)
+        v.addLayout(filter_row)
 
         # Bulk action bar (hidden until any checkbox is ticked)
         self.bulk_bar = _BulkActionBar()
@@ -434,6 +446,10 @@ class GoodsTable(QtWidgets.QWidget):
         self._route_excluded = list(route_excluded or [])
         self._city_has_warehouse = city_has_warehouse
         self._city_key = city_key
+        if city_key and city_key in self.store.cities_by_key:
+            self._city_produces = set(self.store.cities_by_key[city_key].get("produces", []))
+        else:
+            self._city_produces = set()
         self.setEnabled(stop is not None)
         for sh in self._section_headers:
             sh.set_has_warehouse(city_has_warehouse)
@@ -451,6 +467,13 @@ class GoodsTable(QtWidgets.QWidget):
         self._selected_gids.clear()
         self._update_bulk_bar()
 
+    def _apply_filter(self, text: str) -> None:
+        q = text.lower().strip()
+        for gid in range(20):
+            row = _row_for_gid(gid)
+            name = self.store.goods_by_id[gid]["name_en"].lower()
+            self.table.setRowHidden(row, q != "" and q not in name)
+
     def _refresh(self):
         self._suppress = True
         try:
@@ -465,7 +488,7 @@ class GoodsTable(QtWidgets.QWidget):
                         w[f"{side}_adv"].setText("💰 —")
                         w[f"{side}_adv"].setEnabled(False)
                         self._set_side_enabled(gid, side, False)
-                    self._set_row_excluded_style(gid, False, False)
+                    self._set_row_visual(gid, False, False, False)
                 return
             stop = self._stop
             for gid in range(20):
@@ -475,7 +498,8 @@ class GoodsTable(QtWidgets.QWidget):
                 manual = (action == ACTION_MANUAL)
                 route_excluded = gid in self._route_excluded
                 stop_excluded = (action == ACTION_EXCLUDED)
-                self._set_row_excluded_style(gid, route_excluded, stop_excluded)
+                produced = gid in self._city_produces
+                self._set_row_visual(gid, route_excluded, stop_excluded, produced)
                 t = stop["trades"][gid]
                 for side in ("load", "unload"):
                     mode = t[f"{side}_mode"]
@@ -534,32 +558,40 @@ class GoodsTable(QtWidgets.QWidget):
         w[f"{side}_mode"].setEnabled(enabled)
         w[f"{side}_qty"].setEnabled(enabled)
 
-    def _set_row_excluded_style(self, gid: int, route_excluded: bool, stop_excluded: bool):
-        """Visual style for excluded goods.
+    def _set_row_visual(self, gid: int, route_excluded: bool, stop_excluded: bool,
+                        produced: bool):
+        """Visual style for a good row, combining exclusion + 'produced here' markers.
 
-        - route_excluded: globally excluded across all stops -> strikethrough red
-        - stop_excluded: this stop sets ACTION_EXCLUDED        -> italic gray
-        Both can coexist; route style is dominant if both are true.
+        - route_excluded: in the global exclusion list -> strikethrough red name
+        - stop_excluded: this stop's action == ACTION_EXCLUDED -> italic gray name
+        - produced: the current stop's city produces this good -> green dot prefix
+        Both exclusion modes can coexist with 'produced'; route style is dominant.
         """
         row = _row_for_gid(gid)
         name_item = self.table.item(row, self.COL_NAME)
         if not name_item:
             return
+        base_name = self.store.goods_by_id[gid]["name_en"]
+        prefix = "🟢 " if produced else ""
+        name_item.setText(prefix + base_name)
         font = name_item.font()
         font.setStrikeOut(False)
         font.setItalic(False)
+        tooltip_parts: list[str] = []
+        if produced:
+            tooltip_parts.append("Produced by this city")
         if route_excluded:
             font.setStrikeOut(True)
             name_item.setForeground(QtGui.QBrush(QtGui.QColor(180, 50, 50)))
-            name_item.setToolTip("Excluded by route (global exclusion list)")
+            tooltip_parts.append("Excluded by route (global exclusion list)")
         elif stop_excluded:
             font.setItalic(True)
             name_item.setForeground(QtGui.QBrush(QtGui.QColor(140, 140, 140)))
-            name_item.setToolTip("Excluded at this stop")
+            tooltip_parts.append("Excluded at this stop")
         else:
             name_item.setData(QtCore.Qt.ForegroundRole, None)
-            name_item.setToolTip("")
         name_item.setFont(font)
+        name_item.setToolTip(" • ".join(tooltip_parts))
 
     # --- selection ----------------------------------------------------
 

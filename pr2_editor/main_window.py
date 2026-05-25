@@ -23,6 +23,7 @@ from .store import Store
 from .widgets.add_stop_dialog import AddStopDialog
 from .widgets.goods_table import GoodsTable
 from .widgets.manage_cities_dialog import ManageCitiesDialog
+from .widgets.map_window import MapWindow
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -34,6 +35,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.store.user_state_changed.connect(self._on_user_state_changed)
         self.setWindowTitle(self._title())
         self.resize(1380, 820)
+        self._map_window: MapWindow | None = None
         self._build_menu()
         self._build_central()
         self._build_statusbar()
@@ -44,6 +46,38 @@ class MainWindow(QtWidgets.QMainWindow):
         self._update_stop_panel(idx)
         self._refresh_table_for_stop(idx)
         self._refresh_status()
+        if self._map_window is not None:
+            self._map_window.refresh_tooltips()
+
+    def _sync_map_window(self):
+        if self._map_window is None:
+            return
+        cids = [s["trailer"]["city_id"] for s in self.route.stops]
+        self._map_window.set_route(cids)
+
+    def _on_show_map_view(self):
+        if self._map_window is None:
+            self._map_window = MapWindow(self.store, parent=self)
+            self._map_window.city_clicked.connect(self._on_map_city_clicked)
+            self._map_window.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
+        self._sync_map_window()
+        self._map_window.show()
+        self._map_window.raise_()
+        self._map_window.activateWindow()
+
+    def _on_map_city_clicked(self, city_id: int):
+        if len(self.route.stops) >= ahr.MAX_STOPS:
+            QtWidgets.QMessageBox.warning(
+                self._map_window or self, "Add stop",
+                f"Maximum {ahr.MAX_STOPS} stops per route.")
+            return
+        try:
+            idx = self.route.add_stop(int(city_id))
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(
+                self._map_window or self, "Error", str(e))
+            return
+        self.stops_list.setCurrentRow(idx)
 
     def _wire_route(self):
         self.route.changed.connect(self._on_route_changed)
@@ -71,6 +105,7 @@ class MainWindow(QtWidgets.QMainWindow):
         m_edit.addAction("Paste").setShortcut(QtGui.QKeySequence.Paste)
 
         m_tools = mb.addMenu("&Tools")
+        m_tools.addAction("Map view...").triggered.connect(self._on_show_map_view)
         m_tools.addAction("Manage cities (warehouses, nations)...").triggered.connect(self._on_manage_cities)
 
         m_help = mb.addMenu("&Help")
@@ -213,6 +248,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self._refresh_table_for_stop(idx)
         self.setWindowTitle(self._title())
         self._refresh_status()
+        self._sync_map_window()
 
     def _on_stop_internally_changed(self, stop_idx: int):
         if stop_idx == self._current_stop_idx():
