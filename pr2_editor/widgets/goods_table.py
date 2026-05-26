@@ -171,6 +171,11 @@ class GoodsTable(QtWidgets.QWidget):
         self.table.setShowGrid(False)
         self.table.setAlternatingRowColors(True)
         self.table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        # ScrollPerItem (instead of the default ScrollPerPixel) eliminates the cell-widget
+        # ghosting that appears when the table is scrolled mid-row: cell widgets are kept
+        # aligned to row boundaries, so the slider/spinbox never half-paints across two rows.
+        self.table.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerItem)
+        self.table.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollPerItem)
 
         # Header behaviour: columns are NOT user-resizable and NOT movable.
         # Fixed columns hold compact controls (icon, dropdowns, 💰 button).

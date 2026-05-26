@@ -97,9 +97,8 @@ class QtySlider(QtWidgets.QWidget):
         self.spin.setMinimumWidth(46)
         self.spin.setMaximumWidth(54)
         self.spin.setToolTip("Type a number or 'MAX'")
+        self.spin.setFrame(False)  # cleaner look, no double-frame artifact on scroll
         self.spin.valueChanged.connect(self._on_spin_changed)
-        # Force opaque background so the slider track doesn't bleed through
-        self.spin.setAttribute(QtCore.Qt.WA_OpaquePaintEvent, True)
         h.addWidget(self.spin)
 
     def value(self) -> int:
@@ -185,8 +184,8 @@ class PriceSlider(QtWidgets.QWidget):
         self.spin.setMaximumWidth(58)
         self.spin.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.spin.setToolTip("Type any value (overrides the slider range)")
+        self.spin.setFrame(False)  # cleaner look, no double-frame artifact on scroll
         self.spin.valueChanged.connect(self._on_spin_changed)
-        self.spin.setAttribute(QtCore.Qt.WA_OpaquePaintEvent, True)
         h.addWidget(self.spin)
 
     def set_slider_range(self, min_val: int, max_val: int) -> None:
