@@ -140,6 +140,39 @@ class MapView(QtWidgets.QGraphicsView):
         self._current_route_cids: list[int] = []
         self._zoom = 1.0
         self._build_scene()
+        self._build_legend_overlay()
+
+    def _build_legend_overlay(self) -> None:
+        """Translucent legend pinned to the top-center of the view, above the map."""
+        self.legend = QtWidgets.QLabel(self)
+        self.legend.setText(
+            "<b>Left-click</b> a city to add a stop · "
+            "<b>right-click</b> a stop to remove · "
+            "<b>Ctrl + scroll</b> to zoom · drag to pan"
+        )
+        self.legend.setTextFormat(QtCore.Qt.RichText)
+        self.legend.setStyleSheet(
+            "background-color: rgba(255, 255, 255, 235);"
+            "color: #1f1f23;"
+            "padding: 6px 14px;"
+            "border-radius: 8px;"
+            "border: 1px solid #b8c6dd;"
+        )
+        self.legend.adjustSize()
+        self.legend.raise_()
+        # Set the position once the view has its size; resizeEvent will keep it centered.
+        self._position_legend()
+
+    def _position_legend(self) -> None:
+        if not hasattr(self, "legend") or self.legend is None:
+            return
+        x = max(8, (self.viewport().width() - self.legend.width()) // 2)
+        self.legend.move(x, 10)
+        self.legend.raise_()
+
+    def resizeEvent(self, ev: QtGui.QResizeEvent) -> None:
+        super().resizeEvent(ev)
+        self._position_legend()
 
     def _build_scene(self) -> None:
         pixmap = QtGui.QPixmap(str(MAP_IMAGE_PATH))

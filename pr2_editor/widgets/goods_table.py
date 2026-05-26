@@ -160,8 +160,8 @@ class GoodsTable(QtWidgets.QWidget):
         self.table.customContextMenuRequested.connect(self._on_context_menu)
         self.table.setHorizontalHeaderLabels([
             "", "Good", "Action",
-            "Load · Mode", "Load · Qty", "Load · €/t", "Load · 💰",
-            "Unload · Mode", "Unload · Qty", "Unload · €/t", "Unload · 💰",
+            "L · Mode", "L · Qty", "L · €/t", "L · 💰",
+            "U · Mode", "U · Qty", "U · €/t", "U · 💰",
         ])
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
@@ -172,22 +172,33 @@ class GoodsTable(QtWidgets.QWidget):
         self.table.setAlternatingRowColors(True)
         self.table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
+        # Header behaviour: columns are NOT user-resizable and NOT movable.
+        # Fixed columns hold compact controls (icon, dropdowns, 💰 button).
+        # Stretch columns (Name, qty/price sliders) share the remaining space
+        # proportionally — when the window grows, sliders grow with it.
         h = self.table.horizontalHeader()
-        h.setSectionResizeMode(self.COL_ICON, QtWidgets.QHeaderView.Interactive)
-        for c in range(1, self.N_COLS):
-            h.setSectionResizeMode(c, QtWidgets.QHeaderView.Interactive)
-        # Tight column widths so the whole table fits a ~1000 px right pane.
-        self.table.setColumnWidth(self.COL_ICON,    58)
-        self.table.setColumnWidth(self.COL_NAME,    96)
-        self.table.setColumnWidth(self.COL_ACTION,  86)
-        self.table.setColumnWidth(self.COL_L_MODE,  72)
-        self.table.setColumnWidth(self.COL_L_QTY,  124)
-        self.table.setColumnWidth(self.COL_L_PRICE,124)
-        self.table.setColumnWidth(self.COL_L_ADV,   56)
-        self.table.setColumnWidth(self.COL_U_MODE,  72)
-        self.table.setColumnWidth(self.COL_U_QTY,  124)
-        self.table.setColumnWidth(self.COL_U_PRICE,124)
-        self.table.setColumnWidth(self.COL_U_ADV,   56)
+        h.setSectionsMovable(False)
+        h.setSectionsClickable(False)
+        h.setMinimumSectionSize(50)
+        FIXED = QtWidgets.QHeaderView.Fixed
+        STRETCH = QtWidgets.QHeaderView.Stretch
+        layout = [
+            (self.COL_ICON,    FIXED,   64),
+            (self.COL_NAME,    STRETCH, None),
+            (self.COL_ACTION,  FIXED,   92),
+            (self.COL_L_MODE,  FIXED,   90),
+            (self.COL_L_QTY,   STRETCH, None),
+            (self.COL_L_PRICE, STRETCH, None),
+            (self.COL_L_ADV,   FIXED,   58),
+            (self.COL_U_MODE,  FIXED,   90),
+            (self.COL_U_QTY,   STRETCH, None),
+            (self.COL_U_PRICE, STRETCH, None),
+            (self.COL_U_ADV,   FIXED,   58),
+        ]
+        for col, mode, width in layout:
+            h.setSectionResizeMode(col, mode)
+            if width is not None:
+                self.table.setColumnWidth(col, width)
 
         # Build section headers + good rows
         for sec_idx, (title, gids) in enumerate(GOOD_SECTIONS):
@@ -210,8 +221,8 @@ class GoodsTable(QtWidgets.QWidget):
         # Icon column: composite [checkbox] + [icon label] with breathing room on the left
         icon_w = QtWidgets.QWidget()
         ih = QtWidgets.QHBoxLayout(icon_w)
-        ih.setContentsMargins(8, 0, 4, 0)
-        ih.setSpacing(6)
+        ih.setContentsMargins(14, 2, 6, 2)
+        ih.setSpacing(10)
         checkbox = QtWidgets.QCheckBox()
         checkbox.setToolTip(
             "Select this good. With 2+ selected, editing one row "

@@ -50,6 +50,13 @@ class MainWindow(QtWidgets.QMainWindow):
         cids = [s["trailer"]["city_id"] for s in self.route.stops]
         self.map_view.set_route(cids)
 
+    def _on_toggle_edit_route(self):
+        """Edit route ↔ Exit edit route on the same button, depending on what's visible."""
+        if self.right_stack.currentWidget() is self.map_page:
+            self._exit_map_view()
+        else:
+            self._on_show_map_view()
+
     def _on_show_map_view(self):
         self._sync_map_view()
         self.right_stack.setCurrentWidget(self.map_page)
@@ -57,10 +64,23 @@ class MainWindow(QtWidgets.QMainWindow):
         # Defer to the next event-loop tick so the widget has its post-show geometry.
         QtCore.QTimer.singleShot(0, self.map_view.fit_to_view)
         self.map_view.setFocus()
+        self._update_edit_route_button_label(map_active=True)
 
     def _exit_map_view(self):
         if self.right_stack.currentWidget() is self.map_page:
             self.right_stack.setCurrentWidget(self.goods_page)
+        self._update_edit_route_button_label(map_active=False)
+
+    def _update_edit_route_button_label(self, map_active: bool) -> None:
+        if map_active:
+            self.btn_edit_route.setText("✖  Exit edit route  (Esc)")
+            self.btn_edit_route.setToolTip(
+                "Return to the goods view. Press Esc anywhere in the map to exit.")
+        else:
+            self.btn_edit_route.setText("🗺  Edit route")
+            self.btn_edit_route.setToolTip(
+                "Open the map view: left-click a city to add a stop, "
+                "right-click a stop to remove it. Drag rows above to reorder.")
 
     def _on_map_city_clicked(self, city_id: int):
         if len(self.route.stops) >= ahr.MAX_STOPS:
@@ -143,14 +163,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stops_list.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.stops_list.customContextMenuRequested.connect(self._on_stop_context_menu)
         lv.addWidget(self.stops_list, 1)
-        # "Edit route" is the accent primary action: it is the only way to add/remove stops
-        btn_edit_route = QtWidgets.QPushButton("🗺  Edit route")
-        btn_edit_route.setToolTip(
-            "Open the map view: left-click a city to add a stop, "
-            "right-click a stop to remove it. Drag rows above to reorder.")
-        btn_edit_route.clicked.connect(self._on_show_map_view)
-        apply_class_property(btn_edit_route, accent=True)
-        lv.addWidget(btn_edit_route)
+        # "Edit route" is the accent primary action: it morphs into "Exit edit route"
+        # while the map page is shown. There is no other entry point for the map view.
+        self.btn_edit_route = QtWidgets.QPushButton("🗺  Edit route")
+        self._update_edit_route_button_label(map_active=False)
+        self.btn_edit_route.clicked.connect(self._on_toggle_edit_route)
+        apply_class_property(self.btn_edit_route, accent=True)
+        lv.addWidget(self.btn_edit_route)
         lv.addWidget(QtWidgets.QLabel("Global exclusions"))
         self.route_excl_list = QtWidgets.QListWidget()
         self.route_excl_list.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
@@ -217,42 +236,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.right_stack.addWidget(self.goods_page)
 
-        # === Map page ===
+        # === Map page (no top toolbar — legend lives as an overlay on the map) ===
         self.map_page = QtWidgets.QWidget()
         mp_v = QtWidgets.QVBoxLayout(self.map_page)
         mp_v.setContentsMargins(0, 0, 0, 0)
         mp_v.setSpacing(0)
-
-        map_toolbar = QtWidgets.QFrame()
-        map_toolbar.setStyleSheet("QFrame { background-color: #f3f3f5; border-bottom: 1px solid #d8d8dc; }")
-        mt_h = QtWidgets.QHBoxLayout(map_toolbar)
-        mt_h.setContentsMargins(10, 6, 10, 6)
-        mt_h.setSpacing(8)
-
-        btn_exit_map = QtWidgets.QPushButton("✖  Exit edit route  (Esc)")
-        apply_class_property(btn_exit_map, accent=True)
-        btn_exit_map.setToolTip("Return to goods editing")
-        btn_exit_map.clicked.connect(self._exit_map_view)
-        mt_h.addWidget(btn_exit_map)
-
-        btn_fit_map = QtWidgets.QToolButton()
-        btn_fit_map.setText("Fit window")
-        btn_fit_map.clicked.connect(lambda: self.map_view.fit_to_view())
-        mt_h.addWidget(btn_fit_map)
-
-        btn_reset_zoom = QtWidgets.QToolButton()
-        btn_reset_zoom.setText("Reset zoom")
-        btn_reset_zoom.clicked.connect(lambda: self.map_view.reset_zoom())
-        mt_h.addWidget(btn_reset_zoom)
-
-        map_hint = QtWidgets.QLabel(
-            "<i>Left-click a city to add a stop · right-click to remove · "
-            "Ctrl + scroll to zoom · drag to pan</i>")
-        map_hint.setTextFormat(QtCore.Qt.RichText)
-        map_hint.setStyleSheet("color: #4b5765;")
-        mt_h.addWidget(map_hint)
-        mt_h.addStretch(1)
-        mp_v.addWidget(map_toolbar)
 
         self.map_view = MapView(self.store)
         self.map_view.city_clicked.connect(self._on_map_city_clicked)
@@ -268,8 +256,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.right_stack.setCurrentWidget(self.goods_page)
 
         splitter.addWidget(left); splitter.addWidget(self.right_stack)
-        splitter.setStretchFactor(0, 1); splitter.setStretchFactor(1, 5)
+        splitter.setStretchFactor(0, 0); splitter.setStretchFactor(1, 1)
         splitter.setSizes([240, 1080])
+        # Lock the splitter: the resize handle is hidden and the panels cannot be collapsed.
+        splitter.setHandleWidth(0)
+        splitter.setChildrenCollapsible(False)
+        # Fixed width band for the left panel (240–280 px); right panel takes everything else.
+        left.setMinimumWidth(240)
+        left.setMaximumWidth(280)
         self.setCentralWidget(splitter)
 
     def _build_statusbar(self):
