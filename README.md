@@ -45,6 +45,14 @@ The CLI is just `python ahr.py` from the same folder.
 
 ## Pre-built apps (Windows / macOS)
 
+Releases are produced automatically: pushing a `vX.Y.Z` tag runs the
+[`Build & release`](.github/workflows/release.yml) GitHub Actions workflow,
+which builds the macOS (arm64 + x86_64) and Windows (x64) bundles and attaches
+the zips to the matching GitHub Release. Grab the latest from the
+[Releases page](https://github.com/palumbamboo/portroyale-2-trade-routes-maker/releases).
+
+To build locally instead:
+
 ```bash
 # Install the build extra once
 uv pip install --python .venv/bin/python -e ".[build]"

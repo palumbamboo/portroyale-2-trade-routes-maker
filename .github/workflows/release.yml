@@ -1,0 +1,104 @@
+name: Build & release
+
+# Push a tag like v0.6.3 to build the macOS/Windows bundles and attach them to
+# the matching GitHub Release. `workflow_dispatch` lets you dry-run the build
+# from the Actions tab without creating a release (the upload step is skipped
+# when there is no tag).
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # required to attach assets to the release
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen   # PySide6 QtCore must import without a display
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install (with dev extras)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: pytest
+        run: pytest -q
+      - name: .ahr codec regression
+        run: python ahr.py test rotte/test
+
+  build:
+    name: Build ${{ matrix.platform }}-${{ matrix.arch }}
+    needs: test
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14        # Apple Silicon
+            platform: macOS
+            arch: arm64
+          - runner: macos-13        # Intel
+            platform: macOS
+            arch: x86_64
+          - runner: windows-latest
+            platform: Windows
+            arch: x64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install (with build extras)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[build]"
+
+      - name: Build with PyInstaller
+        run: pyinstaller --clean --noconfirm build.spec
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          NAME="PR2-Routes-Editor-${GITHUB_REF_NAME:-dev}-macOS-${{ matrix.arch }}.zip"
+          cd dist
+          ditto -c -k --keepParent --sequesterRsrc "PR2 Routes Editor.app" "$NAME"
+          echo "ASSET_PATH=dist/$NAME" >> "$GITHUB_ENV"
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $name = "PR2-Routes-Editor-$($env:GITHUB_REF_NAME ?? 'dev')-Windows-${{ matrix.arch }}.zip"
+          Compress-Archive -Path "dist/PR2RoutesEditor/*" -DestinationPath "dist/$name"
+          "ASSET_PATH=dist/$name" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      # Always keep the artifact on the workflow run (handy for workflow_dispatch
+      # dry-runs and for debugging a failed release).
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PR2-Routes-Editor-${{ matrix.platform }}-${{ matrix.arch }}
+          path: ${{ env.ASSET_PATH }}
+          if-no-files-found: error
+
+      # Only attach to a release when the run was triggered by a tag.
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ASSET_PATH }}
+          fail_on_unmatched_files: true
