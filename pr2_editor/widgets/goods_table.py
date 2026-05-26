@@ -22,7 +22,7 @@ from ..constants import (
 )
 from ..icons import good_icon
 from ..store import Store
-from ..style import TINT_ROUTE_EXCLUDED, TINT_STOP_EXCLUDED
+from ..style import TINT_ROUTE_EXCLUDED, TINT_STOP_EXCLUDED, apply_class_property
 from .row_widgets import PriceSlider, QtySlider, _ModifierToolButton
 
 PRICE_SLIDER_FALLBACK_MAX = 500  # used if a good has no price_max in config
@@ -133,16 +133,18 @@ class GoodsTable(QtWidgets.QWidget):
         self.ed_filter.textChanged.connect(self._apply_filter)
         tb_layout.addWidget(self.ed_filter)
 
-        self.btn_select_all = QtWidgets.QPushButton("Select all visible")
+        self.btn_select_all = QtWidgets.QPushButton("☑  Select all visible")
         self.btn_select_all.setToolTip(
             "Tick the checkbox of every visible good. With ≥2 selected, "
             "editing one row auto-propagates the change to the others.")
         self.btn_select_all.clicked.connect(self._select_all_visible)
+        apply_class_property(self.btn_select_all, ghost=True)
         tb_layout.addWidget(self.btn_select_all)
 
-        self.btn_clear_selection = QtWidgets.QPushButton("Clear selection")
+        self.btn_clear_selection = QtWidgets.QPushButton("☒  Clear selection")
         self.btn_clear_selection.clicked.connect(self.clear_selection)
         self.btn_clear_selection.setEnabled(False)
+        apply_class_property(self.btn_clear_selection, ghost=True)
         tb_layout.addWidget(self.btn_clear_selection)
 
         tb_layout.addStretch(1)
@@ -165,7 +167,8 @@ class GoodsTable(QtWidgets.QWidget):
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.table.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
         self.table.setIconSize(QtCore.QSize(24, 24))
-        self.table.setShowGrid(True)
+        # Grid lines off so the row tint reads as one continuous band across all cells.
+        self.table.setShowGrid(False)
         self.table.setAlternatingRowColors(True)
         self.table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
@@ -174,7 +177,7 @@ class GoodsTable(QtWidgets.QWidget):
         for c in range(1, self.N_COLS):
             h.setSectionResizeMode(c, QtWidgets.QHeaderView.Interactive)
         # Tight column widths so the whole table fits a ~1000 px right pane.
-        self.table.setColumnWidth(self.COL_ICON,    48)
+        self.table.setColumnWidth(self.COL_ICON,    58)
         self.table.setColumnWidth(self.COL_NAME,    96)
         self.table.setColumnWidth(self.COL_ACTION,  86)
         self.table.setColumnWidth(self.COL_L_MODE,  72)
@@ -204,11 +207,11 @@ class GoodsTable(QtWidgets.QWidget):
         row = _row_for_gid(gid)
         g = self.store.goods_by_id[gid]
 
-        # Icon column: composite [checkbox] + [icon label]
+        # Icon column: composite [checkbox] + [icon label] with breathing room on the left
         icon_w = QtWidgets.QWidget()
         ih = QtWidgets.QHBoxLayout(icon_w)
-        ih.setContentsMargins(2, 0, 2, 0)
-        ih.setSpacing(2)
+        ih.setContentsMargins(8, 0, 4, 0)
+        ih.setSpacing(6)
         checkbox = QtWidgets.QCheckBox()
         checkbox.setToolTip(
             "Select this good. With 2+ selected, editing one row "

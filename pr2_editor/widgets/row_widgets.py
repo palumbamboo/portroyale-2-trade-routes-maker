@@ -86,7 +86,7 @@ class QtySlider(QtWidgets.QWidget):
         self.slider.setRange(0, self.MAX_POSITION)
         self.slider.setSingleStep(50)
         self.slider.setPageStep(200)
-        self.slider.setMinimumWidth(100)
+        self.slider.setMinimumWidth(50)
         self.slider.setToolTip("Slider 0–2000 t; end of travel = MAX")
         self.slider.valueChanged.connect(self._on_slider_changed)
         h.addWidget(self.slider, 1)
@@ -94,10 +94,12 @@ class QtySlider(QtWidgets.QWidget):
         self.spin = _QtyEditSpinBox()
         self.spin.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
         self.spin.setAlignment(QtCore.Qt.AlignRight)
-        self.spin.setMinimumWidth(52)
-        self.spin.setMaximumWidth(62)
+        self.spin.setMinimumWidth(46)
+        self.spin.setMaximumWidth(54)
         self.spin.setToolTip("Type a number or 'MAX'")
         self.spin.valueChanged.connect(self._on_spin_changed)
+        # Force opaque background so the slider track doesn't bleed through
+        self.spin.setAttribute(QtCore.Qt.WA_OpaquePaintEvent, True)
         h.addWidget(self.spin)
 
     def value(self) -> int:
@@ -171,7 +173,7 @@ class PriceSlider(QtWidgets.QWidget):
 
         self.slider = _NoWheelSlider(QtCore.Qt.Horizontal)
         self.slider.setRange(0, 1)
-        self.slider.setMinimumWidth(100)
+        self.slider.setMinimumWidth(50)
         self.slider.valueChanged.connect(self._on_slider_changed)
         h.addWidget(self.slider, 1)
 
@@ -179,11 +181,12 @@ class PriceSlider(QtWidgets.QWidget):
         self.spin.setRange(0, 999_999)
         self.spin.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
         self.spin.setAlignment(QtCore.Qt.AlignRight)
-        self.spin.setMinimumWidth(54)
-        self.spin.setMaximumWidth(70)
+        self.spin.setMinimumWidth(48)
+        self.spin.setMaximumWidth(58)
         self.spin.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.spin.setToolTip("Type any value (overrides the slider range)")
         self.spin.valueChanged.connect(self._on_spin_changed)
+        self.spin.setAttribute(QtCore.Qt.WA_OpaquePaintEvent, True)
         h.addWidget(self.spin)
 
     def set_slider_range(self, min_val: int, max_val: int) -> None:

@@ -208,7 +208,7 @@ class MapView(QtWidgets.QGraphicsView):
                 visit_orders=visits.get(cid, []),
             )
 
-        # Lines connecting stops in order
+        # Lines connecting stops in order (solid)
         for i in range(len(city_ids_in_order) - 1):
             a = self._markers.get(city_ids_in_order[i])
             b = self._markers.get(city_ids_in_order[i + 1])
@@ -223,6 +223,25 @@ class MapView(QtWidgets.QGraphicsView):
             line.setZValue(5)  # behind markers (z=10)
             self._scene.addItem(line)
             self._route_items.append(line)
+
+        # Closing dotted line from the last stop back to the first to show the cycle
+        if len(city_ids_in_order) >= 2:
+            a = self._markers.get(city_ids_in_order[-1])
+            b = self._markers.get(city_ids_in_order[0])
+            if a is not None and b is not None and a is not b:
+                ret = QtWidgets.QGraphicsLineItem(
+                    a.pos().x(), a.pos().y(), b.pos().x(), b.pos().y()
+                )
+                pen = QtGui.QPen(ROUTE_LINE_COLOR, ROUTE_LINE_WIDTH)
+                pen.setCapStyle(QtCore.Qt.RoundCap)
+                pen.setStyle(QtCore.Qt.DashLine)
+                pen.setDashPattern([3, 4])  # short dashes with breathing space
+                ret.setPen(pen)
+                ret.setOpacity(0.65)
+                ret.setZValue(4)  # slightly behind the solid forward lines
+                ret.setToolTip("Return leg: last stop back to the start")
+                self._scene.addItem(ret)
+                self._route_items.append(ret)
 
         # One consolidated badge per city, listing every order index ("1,3" if visited twice)
         font = QtGui.QFont()
