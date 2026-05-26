@@ -1,6 +1,6 @@
 [project]
 name = "portroyale-2-trade-routes-maker"
-version = "0.6.0"
+version = "0.6.1"
 description = "Desktop editor for the .ahr trade-route files of Port Royale 2 - Empire & Pirates."
 readme = "README.md"
 license = { file = "LICENSE" }

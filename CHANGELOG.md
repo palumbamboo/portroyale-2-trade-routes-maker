@@ -4,6 +4,18 @@ All notable changes to this project are tracked in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/),
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.6.1]
+
+### Changed
+
+- Bundled definitive good icons: every PR2 transportable good now has a
+  dedicated PNG named after the English good name (Wheat, Fruit, Wood,
+  Bricks, Corn, Sugar, Cotton, Hemp, Meat, Garments, Rope, Rum, Coffee,
+  Cacao, Dyes, Tobacco, Spices, Wine, Tools, Settlers). The previous
+  French placeholders from elzetia.com are gone.
+- README, CHANGELOG and the `pr2_editor/icons.py` docstring updated for
+  the new icons. README screenshots regenerated.
+
 ## [0.6.0] — first public release
 
 Initial public release of the PR2 Trade Routes Editor: full `.ahr` codec,
