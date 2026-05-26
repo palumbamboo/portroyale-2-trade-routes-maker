@@ -113,6 +113,7 @@ class GoodsTable(QtWidgets.QWidget):
         self._suppress = False
         self._row_widgets: list[dict] = [{} for _ in range(20)]
         self._select_checkboxes: list[QtWidgets.QCheckBox] = [None] * 20  # type: ignore
+        self._icon_cells: list[QtWidgets.QWidget] = []  # checkbox+icon composites, for sizing
         self._selected_gids: set[int] = set()
         self._build()
 
@@ -259,6 +260,7 @@ class GoodsTable(QtWidgets.QWidget):
         ih.addStretch(0)
         self.table.setCellWidget(row, self.COL_ICON, icon_w)
         self._select_checkboxes[gid] = checkbox
+        self._icon_cells.append(icon_w)
 
         it_name = QtWidgets.QTableWidgetItem(g["name_en"])
         it_name.setFlags(it_name.flags() & ~QtCore.Qt.ItemIsEditable)
@@ -336,10 +338,18 @@ class GoodsTable(QtWidgets.QWidget):
         viewport_w = self.table.viewport().width()
         if viewport_w <= 0:
             return
-        total_min = sum(self._col_min_widths.values())
+        mins = dict(self._col_min_widths)
+        # The icon column hosts a native checkbox + icon. Their real width depends
+        # on the platform and the display-scaling factor (Windows checkboxes at
+        # 125/150% DPI are wider than macOS's), so derive the floor from the
+        # actual widget size hint instead of trusting a hardcoded pixel count.
+        if self._icon_cells:
+            needed = max(w.sizeHint().width() for w in self._icon_cells if w is not None)
+            mins[self.COL_ICON] = max(mins[self.COL_ICON], needed + 6)
+        total_min = sum(mins.values())
         extra = max(0, viewport_w - total_min)
         total_weight = sum(self._col_stretch_weights.values()) or 1
-        for col, base in self._col_min_widths.items():
+        for col, base in mins.items():
             weight = self._col_stretch_weights.get(col, 0)
             w = base + (extra * weight) // total_weight
             self.table.setColumnWidth(col, w)
