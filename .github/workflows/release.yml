@@ -43,12 +43,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-14        # Apple Silicon
-            platform: macOS
+          - runner: macos-14        # Apple Silicon (Intel macs are no longer built —
+            platform: macOS          # the macos-13 runner is scarce and Intel is obsolete)
             arch: arm64
-          - runner: macos-13        # Intel
-            platform: macOS
-            arch: x86_64
           - runner: windows-latest
             platform: Windows
             arch: x64

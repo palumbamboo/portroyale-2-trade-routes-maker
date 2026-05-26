@@ -47,9 +47,11 @@ The CLI is just `python ahr.py` from the same folder.
 
 Releases are produced automatically: pushing a `vX.Y.Z` tag runs the
 [`Build & release`](.github/workflows/release.yml) GitHub Actions workflow,
-which builds the macOS (arm64 + x86_64) and Windows (x64) bundles and attaches
-the zips to the matching GitHub Release. Grab the latest from the
+which builds the macOS (Apple Silicon / arm64) and Windows (x64) bundles and
+attaches the zips to the matching GitHub Release. Grab the latest from the
 [Releases page](https://github.com/palumbamboo/portroyale-2-trade-routes-maker/releases).
+(Intel macs aren't built — run PyInstaller locally on an Intel machine if you
+need an x86_64 bundle.)
 
 To build locally instead:
 
