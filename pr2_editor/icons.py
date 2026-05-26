@@ -5,12 +5,12 @@ from PySide6 import QtGui
 
 from .constants import ICONS_DIR
 
-GOOD_ICON_FILE: dict[int, str | None] = {
-    0:  "ble.png",            1:  "fruits.png",  2:  "bois.png",   3:  "briques.png",
-    4:  "mais.png",           5:  "sucre.png",   6:  "cotton.png", 7:  "chanvre.png",
-    8:  "viande.png",         9:  "vetements.png", 10: "cordes.png", 11: "rhum.png",
-    12: "cafe.png",           13: "cacao.png",   14: "teinture.png", 15: "tabac.png",
-    16: "textiles.png",       17: "pain.png",    18: "outils_en_metal.png", 19: "metal.png",
+GOOD_ICON_FILE: dict[int, str | None] = { 
+    0:  "wheat.png",  1:  "fruit.png",    2:  "wood.png",   3:  "bricks.png",
+    4:  "corn.png",   5:  "sugar.png",    6:  "cotton.png", 7:  "hemp.png",
+    8:  "meat.png",   9:  "garments.png", 10: "rope.png",   11: "rum.png",
+    12: "coffee.png", 13: "cacao.png",    14: "dyes.png",   15: "tobacco.png",
+    16: "spices.png", 17: "wine.png",     18: "tools.png",  19: "settlers.png",
 }
 
 
