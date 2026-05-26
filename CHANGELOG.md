@@ -4,6 +4,16 @@ All notable changes to this project are tracked in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/),
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.6.4]
+
+### Fixed
+
+- Checkbox/icon column clipping on Windows (and any high-DPI display). The
+  column min width was a hardcoded value tuned on macOS; the native checkbox
+  + icon are wider at 125/150% scaling and overflowed it. The column now
+  sizes itself from the actual widget's `sizeHint()`, which already accounts
+  for the platform and DPI scale factor.
+
 ## [0.6.3]
 
 ### Added

@@ -91,11 +91,11 @@ if sys.platform == "darwin":
         name="PR2 Routes Editor.app",
         icon=ICON_ICNS,
         bundle_identifier="com.palumbamboo.pr2_routes_editor",
-        version="0.6.3",
+        version="0.6.4",
         info_plist={
             "NSHighResolutionCapable": True,
-            "CFBundleShortVersionString": "0.6.3",
-            "CFBundleVersion": "0.6.3",
+            "CFBundleShortVersionString": "0.6.4",
+            "CFBundleVersion": "0.6.4",
             # Avoid the OS quarantine asking for full disk access on macOS by
             # declaring a clean sandbox-friendly identity:
             "LSMinimumSystemVersion": "11.0",
