@@ -104,6 +104,12 @@ class GoodsTable(QtWidgets.QWidget):
         self._city_has_warehouse = False
         self._city_key: str | None = None
         self._city_produces: set[int] = set()
+        # Goods whose price_max is 0 have no market price (Settlers in PR2). Their
+        # price slider must stay locked at 0 — only quantity is meaningful for them.
+        self._no_price_goods: set[int] = {
+            g["id"] for g in store.config["goods"]
+            if int(g.get("price_max") or 0) <= 0
+        }
         self._suppress = False
         self._row_widgets: list[dict] = [{} for _ in range(20)]
         self._select_checkboxes: list[QtWidgets.QCheckBox] = [None] * 20  # type: ignore
@@ -284,9 +290,16 @@ class GoodsTable(QtWidgets.QWidget):
             self.table.setCellWidget(row, c_qty, qty_w)
 
             price_w = PriceSlider()
-            p_min = int(g.get("price_min") or 0)
-            p_max = int(g.get("price_max") or PRICE_SLIDER_FALLBACK_MAX)
-            price_w.set_slider_range(p_min, p_max)
+            p_max_cfg = int(g.get("price_max") or 0)
+            if p_max_cfg <= 0:
+                # Goods with no market price (Settlers): lock to 0 forever.
+                price_w.set_slider_range(0, 1)
+                price_w.setEnabled(False)
+                price_w.setToolTip(
+                    "This good has no market price in PR2 — only the quantity matters.")
+            else:
+                p_min = int(g.get("price_min") or 0)
+                price_w.set_slider_range(p_min, p_max_cfg)
             price_w.valueChanged.connect(
                 lambda _v, gid=gid, side=side: self._emit_trade(gid, side))
             price_w.spin.customContextMenuRequested.connect(
@@ -407,6 +420,7 @@ class GoodsTable(QtWidgets.QWidget):
                 route_excluded = gid in self._route_excluded
                 stop_excluded = (action == ACTION_EXCLUDED)
                 produced = gid in self._city_produces
+                no_price = gid in self._no_price_goods
                 self._set_row_visual(gid, route_excluded, stop_excluded, produced)
                 t = stop["trades"][gid]
                 for side in ("load", "unload"):
@@ -415,8 +429,17 @@ class GoodsTable(QtWidgets.QWidget):
                     price = t[f"{side}_price"]
                     cb = w[f"{side}_mode"]
                     cb.setCurrentIndex(cb.findData(mode))
+                    # The "Warehouse" option is only valid when the current city
+                    # actually has a warehouse. We gray it out otherwise.
+                    self._apply_warehouse_availability(cb)
                     w[f"{side}_qty"].setValue(qty)
-                    if mode == "warehouse":
+                    if no_price:
+                        # Goods with no market price (Settlers): display the underlying
+                        # value (almost always 0) but keep the widget locked.
+                        display_price = 0 if mode == "warehouse" else min(price, 999_999)
+                        w[f"{side}_price"].setValue(display_price)
+                        w[f"{side}_price"].setEnabled(False)
+                    elif mode == "warehouse":
                         w[f"{side}_price"].setValue(0)
                         w[f"{side}_price"].setEnabled(False)
                     else:
@@ -464,6 +487,21 @@ class GoodsTable(QtWidgets.QWidget):
         w = self._row_widgets[gid]
         w[f"{side}_mode"].setEnabled(enabled)
         w[f"{side}_qty"].setEnabled(enabled)
+
+    def _apply_warehouse_availability(self, cb_mode: QtWidgets.QComboBox) -> None:
+        """Disable the 'Warehouse' item in a mode combo when the current city has no warehouse."""
+        idx_wh = cb_mode.findData("warehouse")
+        if idx_wh < 0:
+            return
+        model = cb_mode.model()
+        item = model.item(idx_wh)
+        if item is None:
+            return
+        item.setEnabled(self._city_has_warehouse)
+        item.setToolTip(
+            "" if self._city_has_warehouse
+            else "This city has no warehouse (set the level in Tools → Manage cities)"
+        )
 
     def _set_row_visual(self, gid: int, route_excluded: bool, stop_excluded: bool,
                         produced: bool):
