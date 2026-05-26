@@ -43,14 +43,21 @@ def test_move_stop_reassigns_start_flag(store):
     assert r.stops[2]["trailer"]["start_flag"] == 0
 
 
-def test_set_good_action_to_manual_keeps_trades_zero(store):
+def test_set_good_action_to_manual_prefills_minmax(store):
     r = Route(store)
     r.add_stop(0)
     r.set_good_action(0, 5, ACTION_MANUAL)
     stop = r.stops[0]
     assert stop["actions"][5] == ACTION_MANUAL
-    # display_order: la merce 5 (manuale) deve essere prima delle non-manuali
+    # manuali in cima al display_order
     assert stop["display_order"][0] == 5
+    # default prices: buy = price_min, sell = price_max (sensible starting thresholds)
+    good_5 = store.goods_by_id[5]
+    assert stop["trades"][5]["load_price"] == int(good_5["price_min"])
+    assert stop["trades"][5]["unload_price"] == int(good_5["price_max"])
+    # qty deliberately stays at 0 — the user picks the volume
+    assert stop["trades"][5]["load_qty"] == 0
+    assert stop["trades"][5]["unload_qty"] == 0
 
 
 def test_set_good_action_to_excluded_resets_trades(store):

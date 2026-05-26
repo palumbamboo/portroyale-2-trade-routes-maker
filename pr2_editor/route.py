@@ -116,14 +116,24 @@ class Route(QtCore.QObject):
         if not (0 <= stop_idx < len(self.stops)) or not (0 <= good_id < 20):
             return
         stop = self.stops[stop_idx]
-        if stop["actions"][good_id] == new_action:
+        old_action = stop["actions"][good_id]
+        if old_action == new_action:
             return
         stop["actions"][good_id] = new_action
         stop["action_kinds"][good_id] = ahr.ACTION_NAMES.get(new_action, "?")
+        t = stop["trades"][good_id]
         if new_action != ACTION_MANUAL:
-            t = stop["trades"][good_id]
+            # Leaving Manual: clear any trade values that would otherwise be ignored.
             t["load_mode"] = "city"; t["load_price"] = 0; t["load_qty"] = 0; t["load_aux"] = 0
             t["unload_mode"] = "city"; t["unload_price"] = 0; t["unload_qty"] = 0; t["unload_aux"] = 0
+        elif old_action != ACTION_MANUAL:
+            # Entering Manual: prefill sensible default thresholds — buy at the min
+            # market price, sell at the max — so the user gets a usable starting point
+            # without having to type. The 💰 recommended-price button still works as before.
+            good = self.store.goods_by_id.get(good_id, {})
+            t["load_price"] = int(good.get("price_min") or 0)
+            t["unload_price"] = int(good.get("price_max") or 0)
+            # qty stays at 0 — leave the volume choice to the user.
         self._rebuild_display_order(stop_idx)
         self.set_dirty()
         self.stop_changed.emit(stop_idx)

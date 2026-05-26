@@ -10,7 +10,7 @@ Includes a format decoder/encoder, a JSON → `.ahr` builder, and a desktop GUI 
 - ✅ Python encoder/decoder with byte-perfect roundtrip (regression fixtures).
 - ✅ JSON → `.ahr` builder, validated in-game.
 - ✅ PySide6 GUI with inline table editing of all goods.
-- 🚧 Standalone Windows `.exe` packaging via PyInstaller.
+- ✅ Standalone macOS `.app` / Windows `.exe` packaging via PyInstaller (see *Building installers* below).
 
 ## Folder layout
 
@@ -37,8 +37,10 @@ Includes a format decoder/encoder, a JSON → `.ahr` builder, and a desktop GUI 
 ├── tests/                    # pytest: Store setters, Route model, .ahr roundtrip
 ├── pr2_config.json           # static config: 20 goods + 60 cities (read-only)
 ├── pr2_map_coords.json       # city -> (x, y) on the map image (produced by calibrate_map.py)
-├── user_state.json           # local per-game state (gitignored)
-├── pyproject.toml            # PySide6 deps + dev pytest
+├── user_state.json           # local per-game state (gitignored; lives elsewhere when frozen)
+├── pyproject.toml            # PySide6 deps + dev pytest + build pyinstaller
+├── build.spec                # PyInstaller spec, cross-platform
+├── run.py                    # absolute-import launcher (PyInstaller entry point)
 ├── README.md
 ├── port-royal2-2-map.jpg     # reference map
 ├── icons/                    # good icons (French placeholders from elzetia.com)
@@ -126,6 +128,43 @@ python ahr.py test rotte/test
 # pytest suite (Store, Route, roundtrip)
 .venv/bin/pytest
 ```
+
+## Building installers
+
+The project ships a cross-platform PyInstaller spec (`build.spec`). Install the
+build extra once, then run pyinstaller from the repo root:
+
+```bash
+# Install the build extra
+uv pip install --python .venv/bin/python -e ".[build]"
+
+# macOS
+.venv/bin/pyinstaller --clean --noconfirm build.spec
+# Windows (PowerShell or cmd.exe)
+.venv\Scripts\pyinstaller.exe --clean --noconfirm build.spec
+```
+
+Output (one-folder bundles; faster startup and friendlier to anti-virus than
+single-file builds):
+
+- **macOS** → `dist/PR2 Routes Editor.app` — open with Finder or `open dist/PR2\ Routes\ Editor.app`.
+- **Windows** → `dist/PR2RoutesEditor/PR2RoutesEditor.exe` — double-click the
+  exe; the folder around it carries the Qt runtime + bundled assets.
+
+Bundled read-only assets (config, map image, calibrated coordinates, icons)
+ship inside the bundle. Writable per-user data goes to an OS-appropriate
+folder so the installed app never tries to modify itself:
+
+- macOS: `~/Library/Application Support/PR2RoutesEditor/`
+- Windows: `%APPDATA%/PR2RoutesEditor/`
+
+`pr2_editor/constants.py` resolves these paths automatically depending on
+whether `sys.frozen` is set, so the same code runs in development and inside
+the bundle.
+
+The build is unsigned. On macOS the first launch needs Right-click → Open
+(or `xattr -dr com.apple.quarantine "dist/PR2 Routes Editor.app"`). On
+Windows SmartScreen may warn about an unknown publisher.
 
 ## `.ahr` format (summary)
 

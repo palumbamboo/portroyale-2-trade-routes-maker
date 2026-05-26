@@ -12,10 +12,12 @@ __pycache__/
 venv/
 env/
 
-# PyInstaller (per la futura build .exe) — solo nella root
+# PyInstaller output (auto-generated) — only at the repo root
 /build/
 /dist/
+# Auto-generated specs are ignored, but our hand-written build.spec is tracked.
 *.spec
+!/build.spec
 
 # IDE / editor
 .vscode/

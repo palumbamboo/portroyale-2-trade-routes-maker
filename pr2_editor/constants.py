@@ -1,15 +1,62 @@
-"""Constants and reference paths for the package."""
+"""Constants and reference paths for the package.
+
+Two roots are tracked:
+
+- ``WORKSPACE`` — read-only bundled assets (config, map image, map coords, icons).
+  In development this is the repo root. When the app is frozen by PyInstaller it
+  is the directory where PyInstaller extracted the bundled data.
+
+- ``USER_DATA`` — writable per-user state. In development this is also the repo
+  root so editing the project keeps using the local ``user_state.json`` and
+  ``rotte/`` folders. When frozen it is an OS-appropriate app-data directory
+  so the installed app can write without touching the bundle.
+"""
 from __future__ import annotations
+import os
+import sys
 from pathlib import Path
 
-# Repository root (parents[1] = the folder containing pr2_editor/)
-WORKSPACE = Path(__file__).resolve().parents[1]
+
+def _bundled_root() -> Path:
+    """Folder that hosts the read-only bundled assets (config, map, icons)."""
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        # PyInstaller extracts bundled data here at runtime.
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parents[1]
+
+
+def _user_data_root() -> Path:
+    """Folder for writable per-user data (user_state.json, saved routes…).
+
+    In development we keep using the repo root so the dev iteration feels the
+    same as before; when the app is frozen we switch to the OS app-data
+    directory so the installed program never tries to write inside its bundle.
+    """
+    if not getattr(sys, "frozen", False):
+        return Path(__file__).resolve().parents[1]
+    app = "PR2RoutesEditor"
+    if sys.platform == "darwin":
+        base = Path.home() / "Library" / "Application Support" / app
+    elif sys.platform == "win32":
+        base = Path(os.environ.get("APPDATA") or Path.home()) / app
+    else:
+        base = Path(os.environ.get("XDG_DATA_HOME") or (Path.home() / ".local" / "share")) / app
+    base.mkdir(parents=True, exist_ok=True)
+    return base
+
+
+WORKSPACE = _bundled_root()
+USER_DATA = _user_data_root()
+
+# Bundled (read-only)
 CONFIG_PATH = WORKSPACE / "pr2_config.json"
-USER_STATE_PATH = WORKSPACE / "user_state.json"
-ICONS_DIR = WORKSPACE / "icons"
-ROUTES_DIR = WORKSPACE / "rotte"
 MAP_IMAGE_PATH = WORKSPACE / "port-royal2-2-map.jpg"
 MAP_COORDS_PATH = WORKSPACE / "pr2_map_coords.json"
+ICONS_DIR = WORKSPACE / "icons"
+
+# Writable (per-user)
+USER_STATE_PATH = USER_DATA / "user_state.json"
+ROUTES_DIR = USER_DATA / "rotte"
 
 # .ahr format sentinels
 QTY_MAX = 0xFFFF
