@@ -4,6 +4,22 @@ All notable changes to this project are tracked in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/),
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.6.2]
+
+### Fixed
+
+- The per-row load/unload mode combo now grays out the **Warehouse** option
+  when the current stop's city has no warehouse. The `city_has_warehouse`
+  flag had been stored but never consulted after the section/bulk-popover
+  removal in 0.6.0. A tooltip points the user at *Tools → Manage cities*.
+- **Settlers** (and any other good whose `price_max` is 0 in
+  `pr2_config.json`): the price slider was falling back to a misleading
+  0–500 range. It now stays locked and disabled with an explanatory
+  tooltip — only quantity is meaningful for these goods. The underlying
+  byte value is preserved on save (no silent rewrite). Verified the
+  `.ahr` codec round-trips Settlers correctly in both *city* and
+  *warehouse* modes.
+
 ## [0.6.1]
 
 ### Changed
