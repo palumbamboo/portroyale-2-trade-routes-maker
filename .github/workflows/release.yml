@@ -95,10 +95,18 @@ jobs:
           path: ${{ env.ASSET_PATH }}
           if-no-files-found: error
 
+      # Build the release body from the matching CHANGELOG section. Every build
+      # job writes the same text, so whichever runs last leaves the body correct.
+      - name: Extract release notes from CHANGELOG
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: python tools/extract_changelog.py "${GITHUB_REF_NAME}" release_notes.md
+
       # Only attach to a release when the run was triggered by a tag.
       - name: Attach to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          body_path: release_notes.md
           files: ${{ env.ASSET_PATH }}
           fail_on_unmatched_files: true
