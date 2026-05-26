@@ -1,4 +1,4 @@
-"""Risoluzione delle icone delle merci da disco."""
+"""Resolves good icons from disk (loaded from the bundled icons/ folder)."""
 from __future__ import annotations
 
 from PySide6 import QtGui

@@ -168,7 +168,7 @@ map image, the (x, y) is recorded. Press *Save & quit* when done.
 ├── pr2_config.json           # static config: 20 goods + 60 cities (read-only)
 ├── pr2_map_coords.json       # city -> (x, y) on the map image
 ├── port-royal2-2-map.jpg     # reference map
-├── icons/                    # good icons (French placeholders from elzetia.com)
+├── icons/                    # good icons (one PNG per good, named after the English good name)
 ├── build.spec                # PyInstaller spec, cross-platform
 ├── run.py                    # absolute-import launcher (PyInstaller entry point)
 ├── pyproject.toml            # PySide6 deps + dev pytest + build pyinstaller

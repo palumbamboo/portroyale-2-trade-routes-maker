@@ -36,8 +36,6 @@ PySide6 GUI, calibrated map, and standalone installers via PyInstaller.
 
 ### Known limitations
 
-- A few good icons (Spices, Wine, Settlers, Tools) are French placeholders
-  from elzetia.com; replace with real PR2 art when available.
 - PyInstaller output is unsigned. macOS asks for Right-click → Open on first
   launch; Windows SmartScreen will warn about an unknown publisher.
 - Linux is not actively tested; the PyInstaller spec runs on Linux but no
