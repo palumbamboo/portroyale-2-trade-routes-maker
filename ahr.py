@@ -1,33 +1,33 @@
-"""Decoder/encoder/builder per file .ahr (Port Royale 2 - Autoroute).
+"""Decoder/encoder/builder for the .ahr (Port Royale 2 — Autoroute) file format.
 
-Uso:
+Usage:
     python ahr.py decode "file.ahr" "file.json"
-    python ahr.py encode "file.json" "file.ahr"     # da JSON-raw a .ahr (output di decode)
-    python ahr.py build  <spec.json> "file.ahr"     # da JSON-user-friendly a .ahr
-    python ahr.py roundtrip "file.ahr"              # verifica decode->encode identici
+    python ahr.py encode "file.json" "file.ahr"     # raw JSON (output of decode) -> .ahr
+    python ahr.py build  <spec.json> "file.ahr"     # user-friendly JSON -> .ahr
+    python ahr.py roundtrip "file.ahr"              # verify decode->encode equality
     python ahr.py cities "file.ahr"
     python ahr.py decode-dir <in_dir> <out_dir>
-    python ahr.py test <dir>                        # roundtrip su tutti i .ahr
+    python ahr.py test <dir>                        # roundtrip every .ahr in dir
 
-Layout .ahr (decifrato):
-- Header (11 byte):
+.ahr layout (reverse-engineered):
+- Header (11 bytes):
     magic[4]   = b'A\\x04\\x00\\x00'
-    nstops[1]  : numero stop effettivi
-    capacity[1]: ceil(nstops/4)*4, cap 16
-    bitmap[5]  : bitmap esclusioni rotta (bit set = merce attiva, clear = esclusa)
-                 byte 0 = merci 0-7, byte 1 = 8-15, byte 2 = 16-19 + 4 bit liberi
+    nstops[1]  : actual stop count
+    capacity[1]: ceil(nstops/4)*4, capped at 16
+    bitmap[5]  : route-wide exclusion bitmap (bit set = good active, clear = excluded)
+                 byte 0 = goods 0-7, byte 1 = 8-15, byte 2 = 16-19 + 4 spare bits
 
-- Stop (426 byte, ripetuto per ogni stop):
-    display_order[20] : permutazione 0..19 (ordine UI; manuali in cima)
+- Stop (426 bytes, one per stop):
+    display_order[20] : permutation 0..19 (UI order; manual goods on top)
     actions[20] u32 LE: 0=excluded, 1=auto, 2=manual
-    trades[20] (16 byte/cad):
-        load_price  u32 LE (= 0xFFFFFFFF se "con magazzino", altrimenti soglia oro/ton)
-        load_qty    u16 LE (= 0xFFFF "max", 0 = niente)
-        load_aux    u16 LE (snapshot/residuo, non input utente)
+    trades[20] (16 bytes each):
+        load_price  u32 LE (= 0xFFFFFFFF when "from warehouse", else gold/ton threshold)
+        load_qty    u16 LE (= 0xFFFF for "max", 0 = nothing)
+        load_aux    u16 LE (snapshot/residue, not a user input — kept for roundtrip)
         unload_price u32 LE
         unload_qty  u16 LE
         unload_aux  u16 LE
-    trailer (6 byte):
+    trailer (6 bytes):
         city_id, 0x00, 0x21, 0x00, start_flag, 0x00
 """
 from __future__ import annotations
@@ -36,9 +36,9 @@ import struct
 import sys
 from pathlib import Path
 
-# Costanti formato
+# Format constants
 HEADER_SIZE = 0x0B
-STOP_SIZE = 0x1AA       # 426 byte
+STOP_SIZE = 0x1AA       # 426 bytes
 MAX_STOPS = 16
 N_GOODS = 20
 TRADE_OFFSET = 0x64
@@ -48,12 +48,14 @@ MAGIC = b'A\x04\x00\x00'
 
 
 def _capacity(nstops: int) -> int:
-    """Header byte 5 (osservato): smallest multiple of 4 >= nstops, cap 16."""
+    """Header byte 5 (observed): smallest multiple of 4 >= nstops, capped at 16."""
     cap = ((nstops + 3) // 4) * 4
     return min(cap, MAX_STOPS)
 
-# Nomi merci (verificati su georgetown-test.ahr: l'ordine corrisponde alla UI in-game).
-# P.R.2 ha 20 "merci" trasportabili: 19 commerciali + 1 speciale (i Coloni, id 19).
+# Good names (verified on georgetown-test.ahr: the order matches the in-game UI).
+# P.R.2 has 20 transportable goods: 19 commercial + 1 special (Settlers, id 19).
+# Kept as informational labels in the decoded JSON; the canonical identifier is
+# the numeric good_id (0..19). pr2_config.json maps id -> {key, name_it, name_en}.
 GOOD_NAMES = [
     "grano", "frutta", "legno", "mattoni", "mais",
     "zucchero", "cotone", "canapa", "carne", "vestiti",
@@ -64,30 +66,32 @@ GOOD_NAMES = [
 
 def decode(data: bytes) -> dict:
     if data[:4] != MAGIC:
-        raise ValueError(f"Magic inatteso: {data[:4].hex()}")
+        raise ValueError(f"Unexpected magic: {data[:4].hex()}")
     nstops = data[4]
     expected = HEADER_SIZE + nstops * STOP_SIZE
     if len(data) != expected:
         raise ValueError(
-            f"Dimensione inattesa: {len(data)} byte (atteso {expected} per {nstops} stop)"
+            f"Unexpected size: {len(data)} bytes (expected {expected} for {nstops} stops)"
         )
     if nstops > MAX_STOPS:
         raise ValueError(f"nstops={nstops} > {MAX_STOPS}")
 
-    # Header bytes 6-10 = bitmap esclusioni route-wide (1=merce attiva sulla rotta, 0=esclusa)
-    # bits[0..7] = merci 0..7 (byte 6); bits[8..15] = merci 8..15 (byte 7); bits[16..19] = merci 16..19 (byte 7+)
+    # Header bytes 6-10 = route-wide exclusion bitmap (1=good active on route, 0=excluded)
+    # bits[0..7]  = goods 0..7  (byte 6)
+    # bits[8..15] = goods 8..15 (byte 7)
+    # bits[16..19] = goods 16..19 (byte 8 lower nibble)
     bitmap_bytes = data[6:11]
     excluded_goods = []
     for g in range(N_GOODS):
         byte_i, bit_i = divmod(g, 8)
         if not (bitmap_bytes[byte_i] >> bit_i) & 1:
             excluded_goods.append(g)
-    # Byte residui (10) e bit residui (>= 20): per ora preservali raw
+    # Residual bytes (10) and residual bits (>= 20): kept raw for now.
     header = {
         "nstops": data[4],
-        "capacity": data[5],   # = ceil(nstops/4)*4, cap 16 — derivato in encode
+        "capacity": data[5],   # = ceil(nstops/4)*4, capped at 16 — derived in encode
         "route_excluded_goods": excluded_goods,
-        "_bitmap_raw": bitmap_bytes.hex(),  # preservato per round-trip lossless
+        "_bitmap_raw": bitmap_bytes.hex(),  # preserved for lossless roundtrip
     }
 
     stops = []
@@ -109,12 +113,14 @@ def _decode_stop(blk: bytes) -> dict:
     trades = []
     for g in range(N_GOODS):
         rec = blk[TRADE_OFFSET + 16 * g:TRADE_OFFSET + 16 * (g + 1)]
-        # Half A = settings di CARICO, Half B = settings di SCARICO.
-        # Verificato su georgetown + min-max-price + avg-price + magazzino-test:
-        # - load_price/unload_price (u32 LE): SOGLIA DI PREZZO con la citta.
-        #   Se = 0xFFFFFFFF ("WAREHOUSE_SENTINEL"), la trade e' col MAGAZZINO (no soglia prezzo).
-        # - load_qty/unload_qty (u16 LE): quantita (0xFFFF = "max" sentinel, 0 = nessuna).
-        # - load_aux/unload_aux (u16 LE): valore residuo/snapshot, NON e' input utente. Preservato per round-trip.
+        # Half A = LOAD settings, Half B = UNLOAD settings.
+        # Verified across georgetown + min-max-price + avg-price + warehouse-test:
+        # - load_price/unload_price (u32 LE): PRICE THRESHOLD vs the city's price.
+        #   If = 0xFFFFFFFF ("WAREHOUSE_SENTINEL") the trade uses the WAREHOUSE
+        #   (no threshold).
+        # - load_qty/unload_qty (u16 LE): quantity (0xFFFF = "max" sentinel, 0 = nothing).
+        # - load_aux/unload_aux (u16 LE): snapshot residue, NOT a user input.
+        #   Preserved for a lossless roundtrip.
         load_price, load_qty, load_aux = struct.unpack('<IHH', rec[0:8])
         unload_price, unload_qty, unload_aux = struct.unpack('<IHH', rec[8:16])
         load_mode = "warehouse" if load_price == 0xFFFFFFFF else "city"
@@ -151,10 +157,10 @@ def _decode_stop(blk: bytes) -> dict:
 def encode(doc: dict) -> bytes:
     h = doc["header"]
     nstops = len(doc["stops"])
-    # Permetti override esplicito (header.nstops) ma di default usa la lunghezza di stops
+    # Allow explicit override (header.nstops); default to the length of stops.
     nstops = h.get("nstops", nstops)
     capacity = h.get("capacity", _capacity(nstops))
-    # Costruisci la bitmap esclusioni: preferisci route_excluded_goods, fallback su _bitmap_raw
+    # Build the exclusion bitmap: prefer route_excluded_goods, fall back to _bitmap_raw.
     if "route_excluded_goods" in h:
         excluded = set(h["route_excluded_goods"])
         bitmap = bytearray(b'\xff' * 5)
@@ -200,14 +206,14 @@ def _encode_stop(s: dict) -> bytes:
     return bytes(blk)
 
 
-## ------- Builder: spec user-friendly -> .ahr ----------------------------
+## ------- Builder: user-friendly spec -> .ahr ----------------------------
 
 WAREHOUSE_PRICE = 0xFFFFFFFF
 QTY_MAX = 0xFFFF
 
 
 class BuildError(ValueError):
-    """Errore di validazione nel build_route()."""
+    """Validation error raised from build_route()."""
 
 
 def _qty(v, field: str) -> int:
@@ -217,26 +223,26 @@ def _qty(v, field: str) -> int:
         return QTY_MAX
     if isinstance(v, int):
         if not (0 <= v <= QTY_MAX):
-            raise BuildError(f"{field}: qty {v} fuori range [0,{QTY_MAX}]; usa 'max' per il sentinel")
+            raise BuildError(f"{field}: qty {v} out of range [0,{QTY_MAX}]; use 'max' for the sentinel")
         return v
-    raise BuildError(f"{field}: qty deve essere int o 'max', non {v!r}")
+    raise BuildError(f"{field}: qty must be int or 'max', not {v!r}")
 
 
 def _half(side: dict | None, field: str) -> tuple[int, int, int]:
-    """Ritorna (price_u32, qty_u16, aux_u16) per un half (load o unload)."""
+    """Return (price_u32, qty_u16, aux_u16) for one half (load or unload)."""
     if not side:
         return (0, 0, 0)
     mode = side.get("mode", "city")
     if mode not in ("city", "warehouse"):
-        raise BuildError(f"{field}.mode deve essere 'city' o 'warehouse', non {mode!r}")
+        raise BuildError(f"{field}.mode must be 'city' or 'warehouse', not {mode!r}")
     qty = _qty(side.get("qty"), field)
     if mode == "warehouse":
         if "price" in side and side["price"] not in (None, 0):
-            raise BuildError(f"{field}: 'price' non ammesso con mode=warehouse")
+            raise BuildError(f"{field}: 'price' is not allowed with mode=warehouse")
         return (WAREHOUSE_PRICE, qty, 0)
     price = side.get("price", 0) or 0
     if not isinstance(price, int) or price < 0 or price > 0xFFFFFFFE:
-        raise BuildError(f"{field}.price deve essere int [0..2^32-2], non {price!r}")
+        raise BuildError(f"{field}.price must be int [0..2^32-2], not {price!r}")
     return (price, qty, 0)
 
 
@@ -249,43 +255,43 @@ def _city_id_map(cfg: dict) -> dict[str, int]:
 
 
 def build_route(spec: dict, cfg: dict) -> bytes:
-    """Costruisce un .ahr binario partendo da una spec user-friendly e dal pr2_config.json."""
+    """Build a binary .ahr starting from a user-friendly spec + pr2_config.json."""
     g_id = _good_id_map(cfg)
     c_id = _city_id_map(cfg)
 
-    # --- esclusioni globali (header bitmap) ---
+    # --- global exclusions (header bitmap) ---
     excluded_route_keys = spec.get("excluded_route", [])
     excluded_route_ids = []
     for k in excluded_route_keys:
         if k not in g_id:
-            raise BuildError(f"excluded_route: merce sconosciuta '{k}'")
+            raise BuildError(f"excluded_route: unknown good '{k}'")
         excluded_route_ids.append(g_id[k])
 
     stops_spec = spec.get("stops", [])
     if not stops_spec:
-        raise BuildError("nessuno stop nella spec ('stops' vuoto)")
+        raise BuildError("no stops in the spec ('stops' is empty)")
     if len(stops_spec) > MAX_STOPS:
-        raise BuildError(f"troppi stop ({len(stops_spec)}, max {MAX_STOPS})")
+        raise BuildError(f"too many stops ({len(stops_spec)}, max {MAX_STOPS})")
 
-    # --- costruisci il documento "raw" e riusa encode() ---
+    # --- build the "raw" document and reuse encode() ---
     raw_stops = []
     for idx, s in enumerate(stops_spec):
         city_key = s.get("city")
         if city_key not in c_id:
-            raise BuildError(f"stop #{idx}: citta sconosciuta '{city_key}'")
+            raise BuildError(f"stop #{idx}: unknown city '{city_key}'")
         excluded_here_ids = []
         for k in s.get("excluded_here", []):
             if k not in g_id:
-                raise BuildError(f"stop #{idx} ({city_key}).excluded_here: merce sconosciuta '{k}'")
+                raise BuildError(f"stop #{idx} ({city_key}).excluded_here: unknown good '{k}'")
             excluded_here_ids.append(g_id[k])
         manual_specs = s.get("manual", {}) or {}
         manual_ids: dict[int, dict] = {}
         for k, v in manual_specs.items():
             if k not in g_id:
-                raise BuildError(f"stop #{idx} ({city_key}).manual: merce sconosciuta '{k}'")
+                raise BuildError(f"stop #{idx} ({city_key}).manual: unknown good '{k}'")
             manual_ids[g_id[k]] = v
 
-        # actions per merce
+        # per-good actions
         actions = []
         all_excluded = set(excluded_route_ids) | set(excluded_here_ids)
         for gid in range(N_GOODS):
@@ -296,13 +302,13 @@ def build_route(spec: dict, cfg: dict) -> bytes:
             else:
                 actions.append(1)
 
-        # display_order: manuali in id-order, poi tutti gli altri in id-order
+        # display_order: manuals in id-order, then everything else in id-order
         manuals_sorted = sorted(manual_ids.keys())
         rest = [g for g in range(N_GOODS) if g not in manual_ids]
         display_order = manuals_sorted + rest
         assert len(display_order) == N_GOODS
 
-        # trades per merce
+        # per-good trades
         trades = []
         for gid in range(N_GOODS):
             good_name = (cfg["goods"][gid]["key"]
@@ -358,7 +364,7 @@ def build_route(spec: dict, cfg: dict) -> bytes:
 def _cmd_build(spec_path: Path, out_path: Path) -> None:
     cfg_path = _find_config()
     if not cfg_path.exists():
-        print(f"ERR: pr2_config.json non trovato ({cfg_path})")
+        print(f"ERR: pr2_config.json not found ({cfg_path})")
         sys.exit(2)
     cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
     spec = json.loads(spec_path.read_text(encoding='utf-8'))
@@ -368,25 +374,25 @@ def _cmd_build(spec_path: Path, out_path: Path) -> None:
         print(f"ERR build: {e}")
         sys.exit(1)
     out_path.write_bytes(data)
-    print(f"OK: {spec_path.name} -> {out_path.name} ({len(data)} byte, {spec.get('stops', []).__len__()} stop)")
+    print(f"OK: {spec_path.name} -> {out_path.name} ({len(data)} bytes, {len(spec.get('stops', []))} stops)")
 
 
 def _cmd_decode(src: Path, dst: Path) -> None:
     data = src.read_bytes()
     doc = decode(data)
     dst.write_text(json.dumps(doc, indent=2, ensure_ascii=False), encoding='utf-8')
-    print(f"OK: {src} -> {dst} ({len(data)} byte, {len(doc['stops'])} stop)")
+    print(f"OK: {src} -> {dst} ({len(data)} bytes, {len(doc['stops'])} stops)")
 
 
 def _cmd_encode(src: Path, dst: Path) -> None:
     doc = json.loads(src.read_text(encoding='utf-8'))
     data = encode(doc)
     dst.write_bytes(data)
-    print(f"OK: {src} -> {dst} ({len(data)} byte)")
+    print(f"OK: {src} -> {dst} ({len(data)} bytes)")
 
 
 def _load_city_index(config_path: Path) -> dict[int, dict]:
-    """Carica pr2_config.json e ritorna {city_id: city_record} solo per le citta con id non null."""
+    """Load pr2_config.json and return {city_id: city_record} (only cities with non-null id)."""
     if not config_path.exists():
         return {}
     cfg = json.loads(config_path.read_text(encoding='utf-8'))
@@ -398,7 +404,7 @@ def _load_city_index(config_path: Path) -> dict[int, dict]:
 
 
 def _find_config() -> Path:
-    """Cerca pr2_config.json: prima accanto allo script, poi salendo di cartella."""
+    """Search for pr2_config.json: first next to this script, then walking up."""
     candidates = [Path(__file__).parent / "pr2_config.json"]
     cur = Path.cwd()
     for _ in range(4):
@@ -407,7 +413,7 @@ def _find_config() -> Path:
     for p in candidates:
         if p.exists():
             return p
-    return candidates[0]  # default per il messaggio "non trovato"
+    return candidates[0]  # default for the "not found" message
 
 
 def _cmd_cities(src: Path) -> None:
@@ -416,11 +422,11 @@ def _cmd_cities(src: Path) -> None:
     cfg_path = _find_config()
     by_id = _load_city_index(cfg_path)
     if cfg_path.exists():
-        cfg_note = f"(config: {cfg_path.name}, {len(by_id)} citta mappate)"
+        cfg_note = f"(config: {cfg_path.name}, {len(by_id)} cities mapped)"
     else:
-        cfg_note = "(nessun pr2_config.json trovato accanto al file)"
+        cfg_note = "(no pr2_config.json found next to the file)"
     print(f"{src.name}  {cfg_note}")
-    print(f"{'#':>2}  {'city_id':>8}  start  {'nome':<24}  nazione")
+    print(f"{'#':>2}  {'city_id':>8}  start  {'name':<24}  nation")
     print("-" * 60)
     for i, st in enumerate(doc["stops"]):
         cid = st["trailer"]["city_id"]
@@ -433,12 +439,12 @@ def _cmd_cities(src: Path) -> None:
 
 def _cmd_decode_dir(in_dir: Path, out_dir: Path) -> None:
     if not in_dir.is_dir():
-        print(f"ERR: {in_dir} non e' una cartella")
+        print(f"ERR: {in_dir} is not a directory")
         sys.exit(2)
     out_dir.mkdir(parents=True, exist_ok=True)
     files = sorted(in_dir.glob("*.ahr"))
     if not files:
-        print(f"Nessun .ahr in {in_dir}")
+        print(f"No .ahr in {in_dir}")
         return
     for src in files:
         dst = out_dir / (src.stem + ".json")
@@ -446,16 +452,16 @@ def _cmd_decode_dir(in_dir: Path, out_dir: Path) -> None:
         doc = decode(data)
         dst.write_text(json.dumps(doc, indent=2, ensure_ascii=False), encoding='utf-8')
         print(f"  {src.name} -> {dst.name}")
-    print(f"OK: {len(files)} file decodificati in {out_dir}")
+    print(f"OK: {len(files)} files decoded to {out_dir}")
 
 
 def _cmd_test(root: Path) -> None:
     if not root.is_dir():
-        print(f"ERR: {root} non e' una cartella")
+        print(f"ERR: {root} is not a directory")
         sys.exit(2)
     files = sorted(root.glob("*.ahr"))
     if not files:
-        print(f"Nessun .ahr in {root}")
+        print(f"No .ahr in {root}")
         return
     failed = 0
     for src in files:
@@ -464,19 +470,19 @@ def _cmd_test(root: Path) -> None:
             doc = decode(raw)
             again = encode(doc)
             if raw == again:
-                print(f"  OK    {src.name}  ({len(raw)} byte)")
+                print(f"  OK    {src.name}  ({len(raw)} bytes)")
             else:
                 failed += 1
                 for i, (a, b) in enumerate(zip(raw, again)):
                     if a != b:
-                        print(f"  FAIL  {src.name}  primo diff @0x{i:04X}: {a:02x}!={b:02x}")
+                        print(f"  FAIL  {src.name}  first diff @0x{i:04X}: {a:02x}!={b:02x}")
                         break
                 else:
-                    print(f"  FAIL  {src.name}  lunghezza orig={len(raw)} enc={len(again)}")
+                    print(f"  FAIL  {src.name}  length orig={len(raw)} enc={len(again)}")
         except Exception as e:
             failed += 1
             print(f"  ERR   {src.name}  {type(e).__name__}: {e}")
-    print(f"\n{len(files)-failed}/{len(files)} OK" + (" — fallimenti presenti" if failed else ""))
+    print(f"\n{len(files)-failed}/{len(files)} OK" + (" — failures present" if failed else ""))
     if failed:
         sys.exit(1)
 
@@ -486,15 +492,15 @@ def _cmd_roundtrip(src: Path) -> None:
     doc = decode(raw)
     again = encode(doc)
     if raw == again:
-        print(f"OK roundtrip identico ({len(raw)} byte)")
+        print(f"OK roundtrip identical ({len(raw)} bytes)")
     else:
-        # Trova primo byte divergente
+        # Find the first divergent byte
         for i, (a, b) in enumerate(zip(raw, again)):
             if a != b:
                 print(f"DIVERGE @0x{i:04X}: orig=0x{a:02x} encoded=0x{b:02x}")
                 break
         else:
-            print(f"DIVERGE lunghezza: orig={len(raw)} encoded={len(again)}")
+            print(f"DIVERGE length: orig={len(raw)} encoded={len(again)}")
         sys.exit(1)
 
 

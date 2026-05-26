@@ -1,6 +1,6 @@
 {
   "_format": "pr2-route-v1",
-  "_note": "Specifica user-friendly per costruire una rotta .ahr. I nomi merci/citta sono le 'key' di pr2_config.json.",
+  "_note": "User-friendly spec for building an .ahr route. Good and city names below are the 'key' fields from pr2_config.json.",
 
   "excluded_route": ["carne", "vestiti"],
 

@@ -63,10 +63,10 @@ class QtySlider(QtWidgets.QWidget):
     """Slider 0..2001 (al fondo = MAX) + spinbox editabile.
 
     - Posizione 0..2000 → valore esatto.
-    - Posizione 2001 → sentinella MAX (QTY_MAX = 0xFFFF, "max nave/magazzino").
-    - Lo spinbox accetta valori arbitrari 0..QTY_MAX, mostra "MAX" alla sentinella;
-      è sempre la fonte di verità (lo slider si attesta al limite più vicino se
-      il valore è > 2000 ma < QTY_MAX, caso anomalo).
+    - Position 2001 → MAX sentinel (QTY_MAX = 0xFFFF, "max hold / warehouse").
+    - The spinbox accepts any value in 0..QTY_MAX, shows "MAX" at the sentinel,
+      and is always the source of truth (the slider snaps to the closest limit
+      if the value is > 2000 but < QTY_MAX, an unusual edge case).
     """
 
     valueChanged = QtCore.Signal(int)
@@ -151,9 +151,9 @@ class QtySlider(QtWidgets.QWidget):
 
 
 class PriceSlider(QtWidgets.QWidget):
-    """Slider tra price_min e price_max della merce + spinbox editabile.
+    """Slider between the good's price_min and price_max + an editable spinbox.
 
-    Il range dello slider è specifico per merce e va configurato con
+    The slider range is per-good and must be configured with
     `set_slider_range(min, max)`. Lo spinbox accetta sempre valori arbitrari
     fino a 999_999 (utile per override anomali).
     """
@@ -193,7 +193,7 @@ class PriceSlider(QtWidgets.QWidget):
         self._slider_max = max(self._slider_min + 1, int(max_val))
         self.slider.setRange(self._slider_min, self._slider_max)
         span = self._slider_max - self._slider_min
-        # Step adattati al range della merce: ~1% del range, minimo 1.
+        # Steps adapted to the good's range: ~1% of the range, minimum 1.
         self.slider.setSingleStep(max(1, span // 100))
         self.slider.setPageStep(max(5, span // 10))
         self.slider.setToolTip(f"Slider {self._slider_min}–{self._slider_max} €/t")
