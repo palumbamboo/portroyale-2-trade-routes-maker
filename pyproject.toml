@@ -3,7 +3,8 @@ name = "portroyale-2-trade-routes-maker"
 version = "0.6.2"
 description = "Desktop editor for the .ahr trade-route files of Port Royale 2 - Empire & Pirates."
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [
     { name = "palumbamboo", email = "danielepalu94@gmail.com" },
@@ -24,7 +25,6 @@ classifiers = [
     "Environment :: MacOS X",
     "Environment :: Win32 (MS Windows)",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: MacOS",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX :: Linux",
@@ -56,6 +56,16 @@ Issues = "https://github.com/palumbamboo/portroyale-2-trade-routes-maker/issues"
 
 [project.scripts]
 pr2-editor = "pr2_editor.app:main"
+
+[tool.setuptools]
+# The repo is a flat layout with non-package data folders (icons/, rotte/) at
+# the top level, so setuptools auto-discovery can't guess what to ship.
+# Declare it explicitly: the pr2_editor package plus the standalone ahr module
+# (imported as `import ahr` by pr2_editor.route and used as the CLI).
+py-modules = ["ahr"]
+
+[tool.setuptools.packages.find]
+include = ["pr2_editor", "pr2_editor.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
