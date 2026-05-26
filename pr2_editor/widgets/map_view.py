@@ -148,7 +148,7 @@ class MapView(QtWidgets.QGraphicsView):
         self.legend.setText(
             "<b>Left-click</b> a city to add a stop · "
             "<b>right-click</b> a stop to remove · "
-            "<b>Ctrl + scroll</b> to zoom · drag to pan"
+            "<b>Ctrl/Cmd + scroll</b> to zoom · drag to pan"
         )
         self.legend.setTextFormat(QtCore.Qt.RichText)
         self.legend.setStyleSheet(

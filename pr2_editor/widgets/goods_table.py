@@ -170,40 +170,52 @@ class GoodsTable(QtWidgets.QWidget):
         # Grid lines off so the row tint reads as one continuous band across all cells.
         self.table.setShowGrid(False)
         self.table.setAlternatingRowColors(True)
-        self.table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        # If the window is narrower than the sum of column minimums, fall back to a
+        # horizontal scrollbar instead of cutting widgets off.
+        self.table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         # ScrollPerItem (instead of the default ScrollPerPixel) eliminates the cell-widget
         # ghosting that appears when the table is scrolled mid-row: cell widgets are kept
         # aligned to row boundaries, so the slider/spinbox never half-paints across two rows.
         self.table.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerItem)
         self.table.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollPerItem)
 
-        # Header behaviour: columns are NOT user-resizable and NOT movable.
-        # Fixed columns hold compact controls (icon, dropdowns, 💰 button).
-        # Stretch columns (Name, qty/price sliders) share the remaining space
-        # proportionally — when the window grows, sliders grow with it.
+        # Columns are NOT user-resizable and NOT movable. Widths are computed
+        # manually in _update_column_widths() so each column has a real minimum
+        # (enough to host its slider + spinbox) and the stretch columns share any
+        # surplus proportionally to their weight.
         h = self.table.horizontalHeader()
         h.setSectionsMovable(False)
         h.setSectionsClickable(False)
-        h.setMinimumSectionSize(50)
-        FIXED = QtWidgets.QHeaderView.Fixed
-        STRETCH = QtWidgets.QHeaderView.Stretch
-        layout = [
-            (self.COL_ICON,    FIXED,   64),
-            (self.COL_NAME,    STRETCH, None),
-            (self.COL_ACTION,  FIXED,   92),
-            (self.COL_L_MODE,  FIXED,   90),
-            (self.COL_L_QTY,   STRETCH, None),
-            (self.COL_L_PRICE, STRETCH, None),
-            (self.COL_L_ADV,   FIXED,   58),
-            (self.COL_U_MODE,  FIXED,   90),
-            (self.COL_U_QTY,   STRETCH, None),
-            (self.COL_U_PRICE, STRETCH, None),
-            (self.COL_U_ADV,   FIXED,   58),
-        ]
-        for col, mode, width in layout:
-            h.setSectionResizeMode(col, mode)
-            if width is not None:
-                self.table.setColumnWidth(col, width)
+        h.setMinimumSectionSize(40)
+        for c in range(self.N_COLS):
+            h.setSectionResizeMode(c, QtWidgets.QHeaderView.Fixed)
+        # Minimum width per column. The 5 stretch columns (Name + 4 qty/price)
+        # also have a stretch weight so wider windows give them more room.
+        self._col_min_widths = {
+            self.COL_ICON:    62,
+            self.COL_NAME:    110,
+            self.COL_ACTION:  92,
+            self.COL_L_MODE:  90,
+            self.COL_L_QTY:   140,
+            self.COL_L_PRICE: 140,
+            self.COL_L_ADV:   58,
+            self.COL_U_MODE:  90,
+            self.COL_U_QTY:   140,
+            self.COL_U_PRICE: 140,
+            self.COL_U_ADV:   58,
+        }
+        self._col_stretch_weights = {
+            self.COL_NAME:    1,
+            self.COL_L_QTY:   2,
+            self.COL_L_PRICE: 2,
+            self.COL_U_QTY:   2,
+            self.COL_U_PRICE: 2,
+        }
+        # Apply the initial widths; resizeEvent will keep them up to date.
+        for col, w in self._col_min_widths.items():
+            self.table.setColumnWidth(col, w)
+        # Make sure the table is at least wide enough to host every column's minimum.
+        self.table.setMinimumWidth(sum(self._col_min_widths.values()) + 4)
 
         # Build section headers + good rows
         for sec_idx, (title, gids) in enumerate(GOOD_SECTIONS):
@@ -297,6 +309,27 @@ class GoodsTable(QtWidgets.QWidget):
 
         self._row_widgets[gid] = row_w
         self.table.setRowHeight(row, 34)
+
+    def resizeEvent(self, ev: QtGui.QResizeEvent) -> None:
+        super().resizeEvent(ev)
+        self._update_column_widths()
+
+    def _update_column_widths(self) -> None:
+        """Distribute available width among columns: each gets its minimum first,
+        then the extra is shared among the stretch columns by weight."""
+        if not hasattr(self, "_col_min_widths"):
+            return
+        # The viewport reports the actual drawable width inside the table.
+        viewport_w = self.table.viewport().width()
+        if viewport_w <= 0:
+            return
+        total_min = sum(self._col_min_widths.values())
+        extra = max(0, viewport_w - total_min)
+        total_weight = sum(self._col_stretch_weights.values()) or 1
+        for col, base in self._col_min_widths.items():
+            weight = self._col_stretch_weights.get(col, 0)
+            w = base + (extra * weight) // total_weight
+            self.table.setColumnWidth(col, w)
 
     # --- public API ---------------------------------------------------
 
@@ -434,46 +467,59 @@ class GoodsTable(QtWidgets.QWidget):
 
     def _set_row_visual(self, gid: int, route_excluded: bool, stop_excluded: bool,
                         produced: bool):
-        """Visual style for a good row: row tint + name styling + produced marker."""
+        """Visual style for a good row.
+
+        Across-the-row tinting via stylesheet leaked unevenly across opaque cell
+        widgets (QSlider tracks, 💰 buttons), so excluded rows are now signalled
+        purely via the name cell:
+
+        - Route-excluded: 🚫 prefix + bold red strikethrough name + pink background
+          on the name cell only.
+        - Stop-excluded: ⊘ prefix + italic gray name + light gray background on
+          the name cell only.
+        - Produced: 🟢 prefix on the name.
+
+        The row's actual cells stay clean; sliders/spinboxes are already disabled
+        for non-manual actions, which is enough to convey "you can't edit this".
+        """
         row = _row_for_gid(gid)
         name_item = self.table.item(row, self.COL_NAME)
         if not name_item:
             return
         base_name = self.store.goods_by_id[gid]["name_en"]
-        prefix = "🟢 " if produced else ""
+        if route_excluded:
+            prefix = "🚫 "
+        elif stop_excluded:
+            prefix = "⊘ "
+        elif produced:
+            prefix = "🟢 "
+        else:
+            prefix = ""
         name_item.setText(prefix + base_name)
+
         font = name_item.font()
         font.setStrikeOut(False)
         font.setItalic(False)
+        font.setBold(False)
         tooltip_parts: list[str] = []
         if produced:
             tooltip_parts.append("Produced by this city")
         if route_excluded:
             font.setStrikeOut(True)
+            font.setBold(True)
             name_item.setForeground(QtGui.QBrush(QtGui.QColor(180, 50, 50)))
-            tint = TINT_ROUTE_EXCLUDED
+            name_item.setBackground(QtGui.QBrush(QtGui.QColor(TINT_ROUTE_EXCLUDED)))
             tooltip_parts.append("Excluded by route (global exclusion list)")
         elif stop_excluded:
             font.setItalic(True)
             name_item.setForeground(QtGui.QBrush(QtGui.QColor(140, 140, 140)))
-            tint = TINT_STOP_EXCLUDED
+            name_item.setBackground(QtGui.QBrush(QtGui.QColor(TINT_STOP_EXCLUDED)))
             tooltip_parts.append("Excluded at this stop")
         else:
             name_item.setData(QtCore.Qt.ForegroundRole, None)
-            tint = None
+            name_item.setBackground(QtGui.QBrush())
         name_item.setFont(font)
         name_item.setToolTip(" • ".join(tooltip_parts))
-
-        if tint:
-            name_item.setBackground(QtGui.QBrush(QtGui.QColor(tint)))
-        else:
-            name_item.setBackground(QtGui.QBrush())
-
-        sheet = f"background-color: {tint};" if tint else ""
-        for col in range(self.N_COLS):
-            w = self.table.cellWidget(row, col)
-            if w is not None:
-                w.setStyleSheet(sheet)
 
     # --- selection ----------------------------------------------------
 
