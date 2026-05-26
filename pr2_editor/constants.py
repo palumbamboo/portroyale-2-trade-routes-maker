@@ -53,6 +53,7 @@ CONFIG_PATH = WORKSPACE / "pr2_config.json"
 MAP_IMAGE_PATH = WORKSPACE / "port-royal2-2-map.jpg"
 MAP_COORDS_PATH = WORKSPACE / "pr2_map_coords.json"
 ICONS_DIR = WORKSPACE / "icons"
+APP_ICON_PATH = WORKSPACE / "branding" / "app.png"
 
 # Writable (per-user)
 USER_STATE_PATH = USER_DATA / "user_state.json"

@@ -31,7 +31,11 @@ datas = [
     (str(ROOT / "pr2_map_coords.json"),   "."),
     (str(ROOT / "port-royal2-2-map.jpg"), "."),
     (str(ROOT / "icons"),                 "icons"),
+    (str(ROOT / "branding" / "app.png"),  "branding"),  # runtime window/dock icon
 ]
+
+ICON_ICO = str(ROOT / "branding" / "app.ico")   # Windows
+ICON_ICNS = str(ROOT / "branding" / "app.icns")  # macOS bundle
 
 a = Analysis(
     [str(ROOT / "run.py")],
@@ -67,6 +71,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=ICON_ICO,                # used on Windows; ignored on macOS (BUNDLE sets .icns)
 )
 
 coll = COLLECT(
@@ -84,12 +89,13 @@ if sys.platform == "darwin":
     app = BUNDLE(
         coll,
         name="PR2 Routes Editor.app",
+        icon=ICON_ICNS,
         bundle_identifier="com.palumbamboo.pr2_routes_editor",
-        version="0.6.2",
+        version="0.6.3",
         info_plist={
             "NSHighResolutionCapable": True,
-            "CFBundleShortVersionString": "0.6.2",
-            "CFBundleVersion": "0.6.2",
+            "CFBundleShortVersionString": "0.6.3",
+            "CFBundleVersion": "0.6.3",
             # Avoid the OS quarantine asking for full disk access on macOS by
             # declaring a clean sandbox-friendly identity:
             "LSMinimumSystemVersion": "11.0",
